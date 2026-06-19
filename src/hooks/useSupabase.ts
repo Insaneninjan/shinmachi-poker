@@ -38,7 +38,6 @@ export function useGame({
   roomCode,
   myPlayerIndex,
   isJudge,
-  members,
 }: UseGameOptions): UseGameReturn {
   const [game, setGame] = useState<GameRow | null>(null)
   const [loading, setLoading] = useState(false)

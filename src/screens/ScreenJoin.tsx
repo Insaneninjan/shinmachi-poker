@@ -110,7 +110,7 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
         {chars.map((c, i) => (
           <input
             key={i}
-            ref={el => (inputRefs.current[i] = el)}
+            ref={(el: HTMLInputElement | null): void => { inputRefs.current[i] = el }}
             maxLength={1}
             value={c}
             inputMode="text"

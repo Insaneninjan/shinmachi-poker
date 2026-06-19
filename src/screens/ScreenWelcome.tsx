@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { supabase } from '../hooks/useSupabase'
 import { Button } from '../components/Button'
 import {
   Layout,
@@ -45,6 +46,34 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
       suit: SUITS[i % SUITS.length],
     }))
   )
+  // on mount, try to load persisted members from Supabase members table
+  useEffect(() => {
+    let mounted = true
+    async function loadMembers() {
+      try {
+        const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: true })
+        if (error) {
+          console.warn('Failed to fetch members from Supabase:', error.message)
+          return
+        }
+        if (!mounted) return
+        if (data && data.length > 0) {
+          // map DB rows to CardMember shape
+          const mapped = data.map((r: any) => ({
+            name: r.name as string,
+            photo: r.photo ?? null,
+            color: r.color ?? COLORS[Math.floor(Math.random() * COLORS.length)],
+            suit: (r.suit as CardMember['suit']) ?? SUITS[Math.floor(Math.random() * SUITS.length)],
+          }))
+          setMembers(mapped)
+        }
+      } catch (err) {
+        console.warn('Error loading members:', err)
+      }
+    }
+    loadMembers()
+    return () => { mounted = false }
+  }, [])
   const [playerNames, setPlayerNames] = useState<string[]>(['', '', ''])
   const [hostName, setHostName] = useState('')
   const [newName, setNewName] = useState('')
@@ -75,19 +104,53 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
     reader.readAsDataURL(file)
   }
 
-  function addMember() {
+  async function addMember() {
     if (!newName.trim()) { alert('名前を入力してね'); return }
     const i = members.length
-    setMembers([...members, {
-      name: newName.trim(),
-      photo: pendingPhoto,
-      color: COLORS[i % COLORS.length],
-      suit: SUITS[i % SUITS.length],
-    }])
-    setNewName('')
-    setPendingPhoto(null)
-    setPreviewUrl(null)
-    if (fileRef.current) fileRef.current.value = ''
+    const color = COLORS[i % COLORS.length]
+    const suit = SUITS[i % SUITS.length]
+
+    setLoading(true)
+    let photoUrl: string | null = null
+
+    try {
+      if (pendingPhoto) {
+        // pendingPhoto is a data URL; convert to Blob
+        const res = await fetch(pendingPhoto)
+        const blob = await res.blob()
+        const fileName = `cards/${Date.now()}-${newName.trim().replace(/\s+/g, '_')}.jpg`
+        const { error: uploadError } = await supabase.storage.from('cards').upload(fileName, blob, { contentType: 'image/jpeg' })
+        if (uploadError) throw uploadError
+        const { data: urlData } = supabase.storage.from('cards').getPublicUrl(fileName)
+        photoUrl = urlData.publicUrl
+      }
+
+      // Try to insert into members table; if it doesn't exist, catch and fallback
+      const insertPayload = { name: newName.trim(), photo: photoUrl, color, suit }
+      const { error: dbError } = await supabase.from('members').insert(insertPayload)
+      if (dbError) {
+        // Table might not exist or other DB error — inform user and fallback
+        console.warn('members table insert failed, falling back to local state:', dbError.message)
+        alert(`メンバー登録はローカルでのみ保存されました（DB保存に失敗しました）: ${dbError.message}`)
+      }
+    } catch (err: unknown) {
+  const msg = err && typeof err === 'object' && 'message' in err ? (err as Record<string, unknown>)['message'] : String(err)
+      console.warn('upload/insert failed, falling back to local state', msg)
+      // continue to local state update
+    } finally {
+      // Update local state regardless of success/failure
+      setMembers(prev => [...prev, {
+        name: newName.trim(),
+        photo: photoUrl ?? pendingPhoto,
+        color,
+        suit,
+      }])
+      setNewName('')
+      setPendingPhoto(null)
+      setPreviewUrl(null)
+      if (fileRef.current) fileRef.current.value = ''
+      setLoading(false)
+    }
   }
 
   function removeMember(i: number) {
