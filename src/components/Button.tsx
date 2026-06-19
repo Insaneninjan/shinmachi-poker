@@ -10,34 +10,36 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANTS: Record<Variant, string> = {
   gold: [
-    'relative overflow-hidden',
-    'bg-gradient-to-br from-[#FFE135] via-[#c9a84c] to-[#e8a020]',
+    'bg-gradient-to-b from-[#d4a93a] to-[#b8891e]',
     'text-[#1a0a00] font-bold',
-    'shadow-[0_4px_20px_rgba(255,225,53,0.5),0_0_0_2px_rgba(201,168,76,0.6)]',
-    'hover:brightness-110 btn-shine',
+    'shadow-[0_3px_0_#8a6010,0_4px_12px_rgba(0,0,0,0.35)]',
+    'hover:from-[#ddb840] hover:to-[#c49820]',
+    'active:shadow-[0_1px_0_#8a6010] active:translate-y-[2px]',
   ].join(' '),
   outline: [
-    'bg-black/30 text-[#FFE135]',
-    'border-2 border-[rgba(255,225,53,0.5)]',
-    'hover:bg-black/50 hover:border-[#FFE135]',
+    'bg-transparent text-[#c9a84c]',
+    'border border-[rgba(201,168,76,0.5)]',
+    'hover:bg-[rgba(201,168,76,0.08)] hover:border-[rgba(201,168,76,0.75)]',
   ].join(' '),
   ghost: [
-    'bg-transparent text-white/50',
-    'border border-white/15',
+    'bg-transparent text-white/45',
+    'border border-white/12',
     'text-[13px] py-[10px]',
-    'hover:text-white/80',
+    'hover:text-white/70 hover:border-white/22',
   ].join(' '),
   red: [
-    'bg-gradient-to-br from-[#c0392b] to-[#96281b]',
+    'bg-gradient-to-b from-[#c0392b] to-[#96281b]',
     'text-white font-bold',
-    'shadow-[0_4px_15px_rgba(192,57,43,0.4)]',
-    'hover:brightness-110',
+    'shadow-[0_3px_0_#6b1a10,0_4px_12px_rgba(0,0,0,0.35)]',
+    'hover:brightness-105',
+    'active:shadow-[0_1px_0_#6b1a10] active:translate-y-[2px]',
   ].join(' '),
   green: [
-    'bg-gradient-to-br from-[#27ae60] to-[#1e8449]',
+    'bg-gradient-to-b from-[#27ae60] to-[#1e8449]',
     'text-white font-bold',
-    'shadow-[0_4px_15px_rgba(39,174,96,0.4)]',
-    'hover:brightness-110',
+    'shadow-[0_3px_0_#145c32,0_4px_12px_rgba(0,0,0,0.35)]',
+    'hover:brightness-105',
+    'active:shadow-[0_1px_0_#145c32] active:translate-y-[2px]',
   ].join(' '),
 }
 
@@ -53,16 +55,13 @@ export function Button({
     <button
       disabled={disabled}
       className={cn(
-        // ベース
         'flex items-center justify-center gap-2',
-        'px-5 py-[14px] rounded-[10px]',
-        'font-[700] text-[15px] tracking-[0.05em]',
-        'transition-all duration-200 cursor-pointer',
+        'px-5 py-[13px] rounded-xl',
+        'font-bold text-[15px] tracking-[0.04em]',
+        'transition-all duration-150 cursor-pointer',
         'border-none font-[inherit]',
-        'active:scale-[0.97]',
-        'disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none',
+        'disabled:opacity-35 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none',
         fullWidth && 'w-full',
-        // バリアント
         VARIANTS[variant],
         className,
       )}

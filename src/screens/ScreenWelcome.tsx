@@ -303,56 +303,42 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
 
   if (sub === 'home') return (
     <Layout>
-      {/* TV番組風タイトルバナー */}
-      <div className="text-center pt-8 pb-4">
-        {/* 上部キラキラ */}
-        <div className="flex justify-center gap-4 mb-2 text-yellow-300 text-lg">
-          <span className="animate-sparkle" style={{ animationDelay: '0s' }}>✦</span>
-          <span className="animate-sparkle" style={{ animationDelay: '0.3s' }}>✦</span>
-          <span className="animate-sparkle" style={{ animationDelay: '0.6s' }}>✦</span>
-        </div>
+      <div className="text-center pt-12 pb-6">
+        {/* タイトルロゴ */}
+        <div className="mb-6 animate-fade-up">
+          {/* 上部装飾ライン */}
+          <div className="flex items-center gap-3 justify-center mb-4">
+            <div className="h-px w-12" style={{ background: 'linear-gradient(90deg, transparent, #c9a84c)' }} />
+            <span className="text-[10px] tracking-[0.3em] font-bold" style={{ color: '#c9a84c' }}>SHINMACHI</span>
+            <div className="h-px w-12" style={{ background: 'linear-gradient(90deg, #c9a84c, transparent)' }} />
+          </div>
 
-        {/* メインタイトルバナー */}
-        <div
-          className="relative mx-auto mb-4 px-4 py-3 rounded-[12px]"
-          style={{
-            background: 'linear-gradient(180deg, #2d8a2d 0%, #1a5c1a 40%, #2d8a2d 100%)',
-            border: '4px solid #FFE135',
-            boxShadow: '0 0 30px rgba(255,225,53,0.4), inset 0 2px 0 rgba(255,255,255,0.2)',
-            maxWidth: '340px',
-          }}
-        >
-          {/* バナー左右の装飾 */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 w-3 h-8 rounded-l-full" style={{ background: '#FFE135' }} />
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 w-3 h-8 rounded-r-full" style={{ background: '#FFE135' }} />
-          <h1
-            className="font-zen text-[28px] leading-tight animate-banner-glow"
+          {/* メインタイトル */}
+          <div
+            className="inline-block px-8 py-4 rounded-2xl mb-3 animate-title-pulse"
             style={{
-              color: '#FFE135',
-              WebkitTextStroke: '2px #1a4d1a',
-              textShadow: '0 0 20px rgba(255,225,53,0.8), 2px 2px 0 #1a4d1a',
-              letterSpacing: '0.02em',
+              background: 'linear-gradient(160deg, #1f5c1f 0%, #143d14 100%)',
+              border: '2px solid #c9a84c',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
             }}
           >
-            新町ポーカー
-          </h1>
-          <p className="text-white/80 text-[11px] tracking-[0.15em] mt-1">
-            ～ 友達の顔でポーカー ～
+            <h1
+              className="text-[32px] font-bold tracking-wider"
+              style={{ color: '#f5e070', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
+            >
+              新町ポーカー
+            </h1>
+          </div>
+
+          {/* サブタイトル */}
+          <p className="text-[11px] tracking-[0.2em] text-white/40">
+            友達の顔でポーカーを楽しもう
           </p>
         </div>
 
         {/* カードアイコン */}
-        <div className="flex justify-center gap-2 mb-4 text-[32px]">
-          <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🃏</span>
-          <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🎴</span>
-          <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🃏</span>
-        </div>
-
-        {/* 下部キラキラ */}
-        <div className="flex justify-center gap-4 text-yellow-300 text-lg">
-          <span className="animate-sparkle" style={{ animationDelay: '0.9s' }}>✦</span>
-          <span className="animate-sparkle" style={{ animationDelay: '1.2s' }}>✦</span>
-          <span className="animate-sparkle" style={{ animationDelay: '1.5s' }}>✦</span>
+        <div className="text-[38px] mb-2" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.6))' }}>
+          🃏
         </div>
       </div>
 
