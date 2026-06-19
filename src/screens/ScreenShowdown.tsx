@@ -82,7 +82,7 @@ export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenSh
 
       <GoldDivider />
       {isJudge ? (
-        <Button variant="gold" onClick={handleNextRound}>▶ &nbsp;次のゲームへ</Button>
+        <Button variant="gold" onClick={handleNextRound}>▶ 次のゲームへ</Button>
       ) : (
         <div className="bg-[rgba(201,168,76,0.08)] border border-[rgba(201,168,76,0.25)] rounded-[10px] px-4 py-3 text-[13px] text-white/60 text-center mb-4">
           ジャッジが次のゲームを開始するまで待ってね

@@ -283,8 +283,8 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
       </div>
       <GoldDivider />
       <div className="space-y-3">
-        <Button variant="gold" onClick={() => setSub('menu')}>♛ &nbsp;ゲームをセットアップ</Button>
-        <Button variant="outline" onClick={onJoin}>♟ &nbsp;ゲームに参加する</Button>
+        <Button variant="gold" onClick={() => setSub('menu')}>♛ ゲームをセットアップ</Button>
+        <Button variant="outline" onClick={onJoin}>♟ ゲームに参加する</Button>
       </div>
     </Layout>
   )
@@ -305,12 +305,12 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
         />
       </FormPanel>
       <div className="space-y-3 mb-4">
-        <Button variant="outline" onClick={() => setSub('cards')}>🃏 &nbsp;カード登録（{members.length}人）</Button>
-        <Button variant="outline" onClick={() => setSub('players')}>👥 &nbsp;プレイヤー設定（{playerNames.length}人）</Button>
+        <Button variant="outline" onClick={() => setSub('cards')}>🃏 カード登録（{members.length}人）</Button>
+        <Button variant="outline" onClick={() => setSub('players')}>👥 プレイヤー設定（{playerNames.length}人）</Button>
       </div>
       <GoldDivider />
       <Button variant="gold" onClick={handleStart} disabled={loading}>
-        {loading ? '準備中...' : '▶ &nbsp;ゲーム開始！'}
+        {loading ? '準備中...' : '▶ ゲーム開始！'}
       </Button>
       <Button variant="ghost" onClick={() => setSub('home')} className="mt-2">← 戻る</Button>
     </Layout>
@@ -380,7 +380,7 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
             : '📷 タップして写真を選ぶ'}
         </div>
         <input type="file" accept="image/*" ref={fileRef} className="hidden" onChange={handlePhotoChange} />
-        <Button variant="gold" onClick={addMember}>＋ &nbsp;追加</Button>
+        <Button variant="gold" onClick={addMember}>＋ 追加</Button>
       </FormPanel>
       <SectionLabel>登録メンバー</SectionLabel>
       <div className="grid grid-cols-3 gap-2 mb-4">
@@ -456,7 +456,7 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
           </div>
         ))}
       </div>
-      <Button variant="outline" onClick={addPlayer} className="mb-4">＋ &nbsp;プレイヤーを追加</Button>
+      <Button variant="outline" onClick={addPlayer} className="mb-4">＋ プレイヤーを追加</Button>
       <Button variant="ghost" onClick={() => setSub('menu')}>← 戻る</Button>
     </Layout>
   )

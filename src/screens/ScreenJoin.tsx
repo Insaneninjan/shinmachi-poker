@@ -20,17 +20,36 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
   const code = chars.join('')
 
   function handleChar(val: string, idx: number) {
-    const c = val.toUpperCase().slice(-1)
+    // スマホのIME確定前の文字列も考慮し、最後の1文字を大文字で取得
+    const c = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(-1)
     const updated = [...chars]
     updated[idx] = c
     setChars(updated)
-    if (c && idx < 3) inputRefs.current[idx + 1]?.focus()
+    if (c && idx < 3) {
+      // setStateの反映を待ってからfocusを移動（iOS Safari対策）
+      setTimeout(() => inputRefs.current[idx + 1]?.focus(), 0)
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent, idx: number) {
-    if (e.key === 'Backspace' && !chars[idx] && idx > 0) {
-      inputRefs.current[idx - 1]?.focus()
+    if (e.key === 'Backspace') {
+      if (!chars[idx] && idx > 0) {
+        // 空欄でBackspaceなら前のマスへ
+        setTimeout(() => inputRefs.current[idx - 1]?.focus(), 0)
+      } else if (chars[idx]) {
+        // 入力済みならクリア（onChangeが発火しないケースの保険）
+        const updated = [...chars]
+        updated[idx] = ''
+        setChars(updated)
+      }
     }
+    // 4桁揃ったらEnterで検索
+    if (e.key === 'Enter' && code.length === 4) handleSearch()
+  }
+
+  // Android の onCompositionEnd / onInput が onChange より先に来るケースへの対策
+  function handleInput(e: React.FormEvent<HTMLInputElement>, idx: number) {
+    handleChar((e.target as HTMLInputElement).value, idx)
   }
 
   async function handleSearch() {
@@ -111,12 +130,18 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
           <input
             key={i}
             ref={(el: HTMLInputElement | null) => { inputRefs.current[i] = el }}
-            maxLength={1}
-            value={c}
+            type="text"
             inputMode="text"
             autoComplete="off"
-            onChange={e => handleChar(e.currentTarget.value, i)}
+            autoCorrect="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            maxLength={2}
+            value={c}
+            onChange={e => handleChar(e.target.value, i)}
+            onInput={e => handleInput(e, i)}
             onKeyDown={e => handleKeyDown(e, i)}
+            onFocus={e => e.target.select()}
             className="w-[60px] h-[72px] text-center bg-black/40 border-2 border-[rgba(201,168,76,0.3)] rounded-[10px] text-[32px] font-bold font-playfair text-[#c9a84c] outline-none focus:border-[#c9a84c] focus:shadow-[0_0_15px_rgba(201,168,76,0.2)] transition-all"
           />
         ))}
@@ -129,7 +154,7 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
       )}
 
       <Button variant="gold" onClick={handleSearch} disabled={code.length !== 4 || loading}>
-        {loading ? '検索中...' : '🔍 &nbsp;ルームを検索'}
+        {loading ? '検索中...' : '🔍 ルームを検索'}
       </Button>
       <Button variant="ghost" onClick={onBack} className="mt-2">← 戻る</Button>
     </Layout>
