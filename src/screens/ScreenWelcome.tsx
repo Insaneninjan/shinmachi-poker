@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../hooks/useSupabase'
-import { getSignedUrlFromProxy } from '../utils/signedUrlProxyClient'
 import { Button } from '../components/Button'
 import {
   Layout,
@@ -47,7 +46,7 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
       suit: SUITS[i % SUITS.length],
     }))
   )
-  const [playerNames, setPlayerNames] = useState<string[]>(['', '', ''])
+const [playerNames, setPlayerNames] = useState<string[]>(['', '', ''])
   const [hostName, setHostName] = useState('')
   const [newName, setNewName] = useState('')
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
@@ -60,82 +59,32 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
   const [avatarsListLoading, setAvatarsListLoading] = useState(false)
   const [showMembersDebug, setShowMembersDebug] = useState(false)
 
-  // on mount: load members and create signed URLs for private avatars
+  // on mount, try to load persisted members from Supabase members table and create signed URLs for private avatars
   useEffect(() => {
     let mounted = true
-    async function fetchMembers() {
+    async function loadMembers() {
       try {
-        // Do NOT try to detect the bucket from the client for private buckets.
-        // Instead, always fetch members and, if a signed-url proxy is configured,
-        // use it to obtain signed URLs (proxy has the service role key).
-        setAvatarsAvailable(null)
-
-        const { data, error } = await supabase
-          .from('members')
-          .select('name,color,suit,avatar_path')
-          .order('created_at', { ascending: true })
+        const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: true })
         if (error) {
           console.warn('Failed to fetch members from Supabase:', error.message)
           return
         }
         if (!mounted) return
-        if (!data || data.length === 0) return
-
-        // build base members without photo
-        type MemberRow = { name: string; color?: string | null; suit?: CardMember['suit'] | null; avatar_path?: string | null }
-        const base: CardMember[] = data.map((r: MemberRow, i: number) => ({
-          name: r.name,
-          photo: null,
-          color: r.color ?? COLORS[i % COLORS.length],
-          suit: (r.suit ?? SUITS[i % SUITS.length]) as CardMember['suit'],
-        }))
-
-        // collect avatar paths and request signed urls in parallel
-        const paths = (data as MemberRow[]).map(r => r.avatar_path).filter(Boolean) as string[]
-        if (paths.length === 0) {
-          setMembers(base)
-          return
+        if (data && data.length > 0) {
+          // map DB rows to CardMember shape
+          const mapped = data.map((r: any) => ({
+            name: r.name as string,
+            photo: r.photo ?? null,
+            color: r.color ?? COLORS[Math.floor(Math.random() * COLORS.length)],
+            suit: (r.suit as CardMember['suit']) ?? SUITS[Math.floor(Math.random() * SUITS.length)],
+          }))
+          setMembers(mapped)
         }
-
-        // create signed url per path in parallel (Supabase currently supports single createSignedUrl per path)
-        const ttl = 3600
-        const signedPromises = paths.map(async (p: string) => {
-          try {
-            if (import.meta.env.VITE_SIGNED_URL_PROXY) {
-              // Use the proxy unconditionally when configured (works with private buckets)
-              const url = await getSignedUrlFromProxy(import.meta.env.VITE_SIGNED_URL_PROXY, p)
-              return { data: { signedUrl: url }, error: null }
-            }
-            const res = await supabase.storage.from('avatars').createSignedUrl(p, ttl)
-            if (res.error) console.debug('createSignedUrl error for', p, res.error)
-            return res
-          } catch (e) {
-            console.debug('createSignedUrl threw for', p, e)
-            return { data: null, error: e }
-          }
-        })
-  const signedResults = await Promise.all(signedPromises)
-  console.debug('signed-url: paths=', paths)
-  console.debug('signed-url: signedResults=', signedResults)
-
-        // Map signed URLs back into base
-        let pathIndex = 0
-        const withPhotos = (data as MemberRow[]).map((r, i: number) => {
-          const photoPath = r.avatar_path
-          if (photoPath) {
-            const res = signedResults[pathIndex++]
-            const url = res?.data?.signedUrl ?? null
-            return { ...base[i], photo: url }
-          }
-          return base[i]
-        })
-
-        setMembers(withPhotos)
       } catch (err) {
         console.warn('Error loading members:', err)
       }
     }
-    fetchMembers()
+    loadMembers()
     return () => { mounted = false }
   }, [avatarsAvailable])
 
@@ -170,59 +119,37 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
     const suit = SUITS[i % SUITS.length]
 
     setLoading(true)
-    let avatarPath: string | null = null
-    let signedUrl: string | null = null
+    let photoUrl: string | null = null
 
     try {
       if (pendingPhoto) {
-        // convert dataURL to blob
+        // pendingPhoto is a data URL; convert to Blob
         const res = await fetch(pendingPhoto)
         const blob = await res.blob()
-        // generate safe filename
-        const fileName = `user_${Date.now()}.jpg`
-        const uploadRes = await supabase.storage.from('avatars').upload(fileName, blob, { contentType: 'image/jpeg' })
-        if (uploadRes?.error) {
-          console.warn('avatars upload error', uploadRes.error)
-          throw uploadRes.error
-        }
-        console.debug('avatars upload result', uploadRes)
-        avatarPath = fileName
+        const fileName = `cards/${Date.now()}-${newName.trim().replace(/\s+/g, '_')}.jpg`
+        const { error: uploadError } = await supabase.storage.from('cards').upload(fileName, blob, { contentType: 'image/jpeg' })
+        if (uploadError) throw uploadError
+        const { data: urlData } = supabase.storage.from('cards').getPublicUrl(fileName)
+        photoUrl = urlData.publicUrl
       }
 
-      // insert into members table (avatar_path stored)
-  const insertPayload: { name: string; color: string; suit: CardMember['suit']; avatar_path?: string } = { name: newName.trim(), color, suit }
-      if (avatarPath) insertPayload.avatar_path = avatarPath
+      // Try to insert into members table; if it doesn't exist, catch and fallback
+      const insertPayload = { name: newName.trim(), photo: photoUrl, color, suit }
       const { error: dbError } = await supabase.from('members').insert(insertPayload)
       if (dbError) {
-        console.warn('members table insert failed:', dbError.message)
-        alert(`DB保存に失敗しました: ${dbError.message}`)
-      }
-
-      // get signed url to display immediately if we uploaded
-      if (avatarPath) {
-        try {
-          const ttl = 3600
-          const { data, error: signError } = await supabase.storage.from('avatars').createSignedUrl(avatarPath, ttl)
-          if (!signError && data?.signedUrl) {
-            signedUrl = data.signedUrl
-          } else if (signError) {
-            console.warn('createSignedUrl failed:', signError.message)
-            setAvatarsError(String(signError.message))
-          }
-        } catch (e) {
-          console.debug('createSignedUrl threw:', e)
-          setAvatarsError(String(e))
-        }
+        // Table might not exist or other DB error — inform user and fallback
+        console.warn('members table insert failed, falling back to local state:', dbError.message)
+        alert(`メンバー登録はローカルでのみ保存されました（DB保存に失敗しました）: ${dbError.message}`)
       }
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'message' in err ? (err as Record<string, unknown>)['message'] : String(err)
+  const msg = err && typeof err === 'object' && 'message' in err ? (err as Record<string, unknown>)['message'] : String(err)
       console.warn('upload/insert failed, falling back to local state', msg)
-      alert(`アップロードに失敗しました: ${msg}`)
+      // continue to local state update
     } finally {
-      // update local state for immediate UI feedback
+      // Update local state regardless of success/failure
       setMembers(prev => [...prev, {
         name: newName.trim(),
-        photo: signedUrl ?? pendingPhoto,
+        photo: photoUrl ?? pendingPhoto,
         color,
         suit,
       }])
@@ -319,48 +246,9 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
   if (sub === 'cards') return (
     <Layout>
       <PageTitle>カード登録</PageTitle>
-      <div className="flex items-center gap-3 mb-4">
-        <span className="inline-block bg-[rgba(201,168,76,0.15)] border border-[rgba(201,168,76,0.3)] rounded-lg px-3 py-1 text-[13px] text-[#c9a84c]">
-          登録済み: {members.length}人
-        </span>
-        {avatarsAvailable === false && (
-          <div className="text-yellow-300 text-sm">※ Supabase Storage の 'avatars' バケットが見つかりません。写真は表示されません。</div>
-        )}
-        {avatarsError && (
-          <div className="text-red-300 text-sm">Storage error: {avatarsError}</div>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={async () => {
-              setAvatarsListLoading(true)
-              try {
-                const { data, error } = await supabase.storage.from('avatars').list('', { limit: 200 })
-                if (error) {
-                  setAvatarsError(error.message)
-                  setAvatarsList(null)
-                } else {
-                  setAvatarsError(null)
-                  setAvatarsList(data ?? [])
-                }
-              } catch (e) {
-                setAvatarsError(String(e))
-                setAvatarsList(null)
-              } finally {
-                setAvatarsListLoading(false)
-              }
-            }}
-            className="text-sm px-3 py-1 rounded bg-black/20 hover:bg-black/30 text-white/80 border border-[rgba(201,168,76,0.15)]"
-          >
-            {avatarsListLoading ? '読み込み中…' : 'Debug: バケット一覧'}
-          </button>
-          <button
-            onClick={() => setShowMembersDebug(s => !s)}
-            className="text-sm px-3 py-1 rounded bg-black/20 hover:bg-black/30 text-white/80 border border-[rgba(201,168,76,0.15)]"
-          >
-            {showMembersDebug ? 'Hide members' : 'Debug: Members'}
-          </button>
-        </div>
-      </div>
+      <span className="inline-block bg-[rgba(201,168,76,0.15)] border border-[rgba(201,168,76,0.3)] rounded-lg px-3 py-1 text-[13px] text-[#c9a84c] mb-4">
+        登録済み: {members.length}人
+      </span>
       <FormPanel>
         <label className="text-[11px] text-[#c9a84c] font-bold tracking-[0.1em] uppercase block mb-2">名前</label>
         <input
@@ -400,33 +288,6 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
           </div>
         ))}
       </div>
-      {avatarsList && (
-        <div className="mt-4 p-3 bg-black/25 border border-[rgba(201,168,76,0.08)] rounded">
-          <div className="text-[13px] text-white/70 mb-2">avatars bucket contents ({avatarsList.length})</div>
-          <ul className="text-[13px] text-white/60 list-disc list-inside max-h-48 overflow-auto">
-            {avatarsList.map((f, idx) => (
-              <li key={idx}>{f?.name ?? JSON.stringify(f)}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {showMembersDebug && (
-        <div className="mt-4 p-3 bg-black/20 border border-[rgba(201,168,76,0.06)] rounded text-[13px] text-white/80">
-          <div className="mb-2">members[] ({members.length})</div>
-          <div className="max-h-64 overflow-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="text-left text-white/60"><th>#</th><th>Name</th><th>photo</th></tr>
-              </thead>
-              <tbody>
-                {members.map((m, i) => (
-                  <tr key={i} className="border-t border-white/[0.03]"><td className="pr-2">{i}</td><td>{m.name}</td><td className="break-all">{m.photo ?? '<null>'}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
       <Button variant="ghost" onClick={() => setSub('menu')}>← 戻る</Button>
     </Layout>
   )
