@@ -38,6 +38,7 @@ export function useGame({
   roomCode,
   myPlayerIndex,
   isJudge,
+  // members may be passed by callers but is not used directly in this hook
 }: UseGameOptions): UseGameReturn {
   const [game, setGame] = useState<GameRow | null>(null)
   const [loading, setLoading] = useState(false)
