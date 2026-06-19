@@ -30,7 +30,8 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
 
   const [discardSelected, setDiscardSelected] = useState<number[]>([])
   const [openSelected, setOpenSelected] = useState<number[]>([0, 1, 2, 3, 4])
-  const [yaku, setYaku] = useState('')
+  const [yakuType, setYakuType] = useState('')   // プルダウンで選ぶ役の種類
+  const [yakuText, setYakuText] = useState('')   // 自由入力の役名（大喜利）
   const [submitting, setSubmitting] = useState(false)
   const [changeSubmitted, setChangeSubmitted] = useState(myHand?.changed ?? false)
   const [openSubmitted, setOpenSubmitted] = useState(false)
@@ -43,7 +44,8 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
     }
     if (phase === 'open') {
       setOpenSelected([0, 1, 2, 3, 4])
-      setYaku('')
+      setYakuType('')
+      setYakuText('')
       const myEntry = showdown.find(s => s.playerIndex === myPlayerIndex)
       setOpenSubmitted(!!myEntry)
     }
@@ -70,9 +72,12 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
     setSubmitting(false)
   }
 
+  // 役タイプ + 大喜利名を合体させた最終的な役文字列
+  const yakuCombined = [yakuType, yakuText.trim()].filter(Boolean).join(' / ')
+
   async function submitOpen() {
     if (!myHand || submitting) return
-    if (!yaku.trim()) { alert('役を入力してね'); return }
+    if (!yakuCombined) { alert('役を選択 or 入力してね'); return }
     if (openSelected.length === 0) { alert('出すカードを1枚以上選んでね'); return }
     setSubmitting(true)
     const { data } = await supabase.from('games').select('showdown').eq('id', roomCode).single()
@@ -80,7 +85,7 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
     currentSD.push({
       playerIndex: myPlayerIndex,
       player: myHand.player,
-      yaku: yaku.trim(),
+      yaku: yakuCombined,
       cards: openSelected.map(i => myHand.cards[i]),
     })
     await supabase.from('games').update({ showdown: currentSD }).eq('id', roomCode)
@@ -189,17 +194,45 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
             <p className="text-[12px] text-white/35 text-center mb-4">
               選んだカードがショーダウンで公開されます
             </p>
-            <SectionLabel>役を入力しよう</SectionLabel>
-            <div className="bg-black/30 border border-[rgba(201,168,76,0.2)] rounded-[14px] p-4 mb-4">
-              <div className="font-playfair text-[20px] text-[#c9a84c] text-center min-h-8 mb-3">
-                {yaku || '—'}
+            <SectionLabel>役を申告しよう</SectionLabel>
+            <div className="bg-black/30 border border-[rgba(201,168,76,0.2)] rounded-[14px] p-4 mb-4 space-y-3">
+              {/* プレビュー */}
+              <div className="font-playfair text-[20px] text-[#c9a84c] text-center min-h-8">
+                {yakuCombined || '—'}
               </div>
-              <input
-                className="w-full px-4 py-3 bg-black/40 border border-[rgba(201,168,76,0.3)] rounded-lg text-[15px] text-[#fdf6e3] outline-none focus:border-[#c9a84c] placeholder-white/30"
-                value={yaku}
-                onChange={e => setYaku(e.target.value)}
-                placeholder="例: 団地5カード、元カノフラッシュ…"
-              />
+
+              {/* 役の種類プルダウン */}
+              <div>
+                <div className="text-[11px] text-white/40 tracking-widest mb-1">役の種類（任意）</div>
+                <select
+                  value={yakuType}
+                  onChange={e => setYakuType(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/40 border border-[rgba(201,168,76,0.3)] rounded-lg text-[15px] text-[#fdf6e3] outline-none focus:border-[#c9a84c] appearance-none cursor-pointer"
+                >
+                  <option value="">── 選択しない ──</option>
+                  <option value="ノーペア">ノーペア</option>
+                  <option value="ワンペア">ワンペア</option>
+                  <option value="ツーペア">ツーペア</option>
+                  <option value="スリーカード">スリーカード</option>
+                  <option value="ストレート">ストレート</option>
+                  <option value="フラッシュ">フラッシュ</option>
+                  <option value="フルハウス">フルハウス</option>
+                  <option value="フォーカード">フォーカード</option>
+                  <option value="ストレートフラッシュ">ストレートフラッシュ</option>
+                  <option value="ファイブカード">ファイブカード</option>
+                </select>
+              </div>
+
+              {/* 大喜利名（自由入力） */}
+              <div>
+                <div className="text-[11px] text-white/40 tracking-widest mb-1">役名（自由入力）</div>
+                <input
+                  className="w-full px-4 py-3 bg-black/40 border border-[rgba(201,168,76,0.3)] rounded-lg text-[15px] text-[#fdf6e3] outline-none focus:border-[#c9a84c] placeholder-white/30"
+                  value={yakuText}
+                  onChange={e => setYakuText(e.target.value)}
+                  placeholder="例: 元カノフラッシュ、団地5カード…"
+                />
+              </div>
             </div>
             <Button variant="gold" onClick={submitOpen} disabled={submitting}>
               {submitting ? '送信中...' : '⚡ オープン！'}
