@@ -31,13 +31,13 @@ const DUMMY_NAMES = [
 ]
 
 interface ScreenWelcomeProps {
-  onStartGame: (hostName: string, playerNames: string[], members: CardMember[]) => Promise<void>
+  onCreateLobby: (hostName: string, members: CardMember[]) => Promise<void>
   onJoin: () => void
 }
 
-type SubScreen = 'home' | 'menu' | 'cards' | 'players'
+type SubScreen = 'home' | 'menu' | 'cards'
 
-export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
+export function ScreenWelcome({ onCreateLobby, onJoin }: ScreenWelcomeProps) {
   const [sub, setSub] = useState<SubScreen>('home')
   const [members, setMembers] = useState<CardMember[]>(
     DUMMY_NAMES.map((name, i) => ({
@@ -47,7 +47,6 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
       suit: SUITS[i % SUITS.length],
     }))
   )
-  const [playerNames, setPlayerNames] = useState<string[]>(['', '', ''])
   const [hostName, setHostName] = useState('')
   const [newName, setNewName] = useState('')
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
@@ -279,23 +278,15 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
     setEditSaving(false)
   }
 
-  function addPlayer() { setPlayerNames([...playerNames, '']) }
-  function removePlayer(i: number) {
-    if (playerNames.length <= 2) { alert('最低2人必要です'); return }
-    setPlayerNames(playerNames.filter((_, idx) => idx !== i))
-  }
-
-  async function handleStart() {
+  async function handleCreateLobby() {
     const host = hostName.trim() || 'ホスト'
-    const players = playerNames.map((p, i) => p.trim() || `プレイヤー${i + 1}`)
-    if (players.length < 2) { alert('プレイヤーを2人以上設定してね'); return }
-    if (members.length < players.length * 5) {
-      alert(`カードが足りません（必要: ${players.length * 5}枚、現在: ${members.length}枚）`)
+    if (members.length < 5) {
+      alert(`カードが足りません（最低5枚必要、現在: ${members.length}枚）`)
       return
     }
     setLoading(true)
     try {
-      await onStartGame(host, players, members)
+      await onCreateLobby(host, members)
     } finally {
       setLoading(false)
     }
@@ -344,16 +335,16 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
 
       <GoldDivider />
       <div className="space-y-3">
-        <Button variant="gold" onClick={() => setSub('menu')}>♛ ゲームをセットアップ</Button>
-        <Button variant="outline" onClick={onJoin}>♟ ゲームに参加する</Button>
+        <Button variant="gold" onClick={() => setSub('menu')}>🏠 部屋を作る（ホスト）</Button>
+        <Button variant="outline" onClick={onJoin}>📲 部屋に参加する</Button>
       </div>
     </Layout>
   )
 
   if (sub === 'menu') return (
     <Layout>
-      <PageTitle>セットアップ</PageTitle>
-      <PageSub>カード登録とプレイヤー設定をしよう</PageSub>
+      <PageTitle>部屋を作る</PageTitle>
+      <PageSub>あなたの名前を入力してカードを準備しよう</PageSub>
       <FormPanel>
         <label className="text-[11px] text-[#c9a84c] font-bold tracking-[0.1em] uppercase block mb-2">
           あなたの名前（ホスト）
@@ -363,15 +354,18 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
           value={hostName}
           onChange={e => setHostName(e.target.value)}
           placeholder="例: 田中太郎"
+          onKeyDown={e => e.key === 'Enter' && handleCreateLobby()}
         />
       </FormPanel>
       <div className="space-y-3 mb-4">
-        <Button variant="outline" onClick={() => setSub('cards')}>🃏 カード登録（{members.length}人）</Button>
-        <Button variant="outline" onClick={() => setSub('players')}>👥 プレイヤー設定（{playerNames.length}人）</Button>
+        <Button variant="outline" onClick={() => setSub('cards')}>🃏 カード登録（{members.length}枚）</Button>
+      </div>
+      <div className="bg-[rgba(201,168,76,0.06)] border border-[rgba(201,168,76,0.15)] rounded-xl px-4 py-3 text-[12px] text-white/50 mb-4">
+        📌 プレイヤーはルームコードを使って後から自分で参加できます
       </div>
       <GoldDivider />
-      <Button variant="gold" onClick={handleStart} disabled={loading}>
-        {loading ? '準備中...' : '▶ ゲーム開始！'}
+      <Button variant="gold" onClick={handleCreateLobby} disabled={loading}>
+        {loading ? '部屋を作成中...' : '🏠 部屋を作る'}
       </Button>
       <Button variant="ghost" onClick={() => setSub('home')} className="mt-2">← 戻る</Button>
     </Layout>
@@ -529,33 +523,6 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
     </Layout>
   )
 
-  // players
-  return (
-    <Layout>
-      <PageTitle>プレイヤー設定</PageTitle>
-      <PageSub>プレイヤー名を入力しよう（ジャッジは自動で回ります）</PageSub>
-      <div className="mb-4">
-        {playerNames.map((p, i) => (
-          <div key={i} className="flex items-center gap-2 py-2 border-b border-white/[0.06]">
-            <input
-              className="flex-1 px-3 py-2 bg-black/40 border border-[rgba(201,168,76,0.3)] rounded-lg text-[14px] text-[#fdf6e3] outline-none focus:border-[#c9a84c] placeholder-white/30"
-              value={p}
-              onChange={e => {
-                const updated = [...playerNames]
-                updated[i] = e.target.value
-                setPlayerNames(updated)
-              }}
-              placeholder={`プレイヤー${i + 1}`}
-            />
-            <button
-              className="text-white/20 text-lg hover:text-red-400 transition-colors bg-none border-none cursor-pointer"
-              onClick={() => removePlayer(i)}
-            >✕</button>
-          </div>
-        ))}
-      </div>
-      <Button variant="outline" onClick={addPlayer} className="mb-4">＋ プレイヤーを追加</Button>
-      <Button variant="ghost" onClick={() => setSub('menu')}>← 戻る</Button>
-    </Layout>
-  )
+  // cards 画面にフォールバック（sub === 'cards' は上でハンドル済み）
+  return null
 }

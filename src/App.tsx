@@ -3,12 +3,13 @@ import { supabase } from './hooks/useSupabase'
 import { shuffleArray, generateRoomCode, amIJudge } from './utils/gameLogic'
 import { ScreenWelcome } from './screens/ScreenWelcome'
 import { ScreenJoin } from './screens/ScreenJoin'
+import { ScreenLobby } from './screens/ScreenLobby'
 import { ScreenHost } from './screens/ScreenHost'
 import { ScreenGame } from './screens/ScreenGame'
 import { ScreenShowdown } from './screens/ScreenShowdown'
 import type { GameRow, CardMember, ClientState } from './types/game'
 
-type AppScreen = 'welcome' | 'join' | 'host' | 'game' | 'showdown'
+type AppScreen = 'welcome' | 'join' | 'lobby' | 'host' | 'game' | 'showdown'
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>('welcome')
@@ -35,13 +36,20 @@ export default function App() {
         (payload) => {
           // payload.new は差分のみのため、前の state と merge する
           const diff = payload.new as Partial<GameRow>
-          if (diff.phase === 'winner') {
-            setGame(prev => ({ ...(prev ?? {} as GameRow), ...diff } as GameRow))
+          // showdown が配列でない場合（Realtime の JSONB シリアライズ不具合対策）は空配列に正規化
+          const safeShowdown = Array.isArray(diff.showdown) ? diff.showdown : undefined
+          const safeDiff = safeShowdown !== undefined ? { ...diff, showdown: safeShowdown } : diff
+          if (safeDiff.phase === 'winner') {
+            setGame(prev => ({ ...(prev ?? {} as GameRow), ...safeDiff } as GameRow))
             navigate('showdown')
           }
-          if (diff.phase === 'change' && screen === 'showdown') {
-            setGame(prev => ({ ...(prev ?? {} as GameRow), ...diff } as GameRow))
-            const iAmNowJudge = amIJudge(client.myPlayerIndex, diff.judge_index ?? 0)
+          if (safeDiff.phase === 'change' && screen === 'showdown') {
+            setGame(prev => {
+              const merged = { ...(prev ?? {} as GameRow), ...safeDiff } as GameRow
+              if (!Array.isArray(merged.showdown)) merged.showdown = []
+              return merged
+            })
+            const iAmNowJudge = amIJudge(client.myPlayerIndex, safeDiff.judge_index ?? 0)
             setClient(prev => ({ ...prev, role: iAmNowJudge ? 'judge' : 'player' }))
             navigate(iAmNowJudge ? 'host' : 'game')
           }
@@ -50,33 +58,75 @@ export default function App() {
     return () => { channel.unsubscribe() }
   }, [client.roomCode, screen, client.myPlayerIndex])
 
-  async function handleStartGame(hostName: string, playerNames: string[], cardMembers: CardMember[]) {
+  // ─── ホストが部屋を作る ───
+  async function handleCreateLobby(hostName: string, cardMembers: CardMember[]) {
     setMembers(cardMembers)
     const code = generateRoomCode()
-    const allNames = [hostName, ...playerNames]
-    const playerOnlyNames = allNames.slice(1)
-    const shuffled = shuffleArray(cardMembers)
-    // playerOnlyNames corresponds to player_names starting at index 1 (0 is host)
-    // Ensure each hand.index matches the position in player_names to avoid collisions
-    const hands = playerOnlyNames.map((name, i) => ({
-      player: name,
-      index: i + 1, // shift by 1 so indices align with player_names
-      cards: shuffled.slice(i * 5, i * 5 + 5),
-      changed: false, opened: false,
-    }))
     const row: GameRow = {
-      id: code, phase: 'change', hands, showdown: [],
-      judge_index: 0, player_names: allNames, winner: null,
+      id: code,
+      phase: 'lobby',
+      player_names: [hostName],   // ホストだけが最初にいる
+      hands: [],
+      showdown: [],
+      judge_index: 0,
+      winner: null,
       members: cardMembers,
       created_at: new Date().toISOString(),
     }
     const { error } = await supabase.from('games').upsert(row)
     if (error) { alert(`エラー: ${error.message}`); return }
     setGame(row)
-    setClient({ roomCode: code, role: 'judge', myPlayerIndex: 0, myPlayerName: hostName, discardSelected: [], openSelected: [] })
-    navigate('host')
+    setClient({
+      roomCode: code,
+      role: 'judge',              // ホストは最初のジャッジ
+      myPlayerIndex: 0,
+      myPlayerName: hostName,
+      discardSelected: [],
+      openSelected: [],
+    })
+    navigate('lobby')
   }
 
+  // ─── プレイヤーがロビーに参加する ───
+  async function handleJoinLobby(g: GameRow, playerName: string) {
+    // 最新の player_names を取得してから追加（競合防止）
+    const { data } = await supabase
+      .from('games')
+      .select('player_names')
+      .eq('id', g.id)
+      .single()
+    const currentNames = (data?.player_names ?? g.player_names) as string[]
+    const playerIndex = currentNames.length   // 新しいプレイヤーは末尾
+    const newNames = [...currentNames, playerName]
+    const { error } = await supabase
+      .from('games')
+      .update({ player_names: newNames })
+      .eq('id', g.id)
+    if (error) { alert(`参加に失敗しました: ${error.message}`); return }
+    setGame({ ...g, player_names: newNames })
+    setClient({
+      roomCode: g.id,
+      role: 'player',
+      myPlayerIndex: playerIndex,
+      myPlayerName: playerName,
+      discardSelected: [],
+      openSelected: [],
+    })
+    navigate('lobby')
+  }
+
+  // ─── ロビーからゲーム開始（Realtime 経由で全員に通知される） ───
+  function handleLobbyGameStarted(g: GameRow, isJudge: boolean) {
+    setGame(g)
+    // DB に保存されている members があれば上書きする
+    if (Array.isArray(g.members) && g.members.length > 0) {
+      setMembers(g.members)
+    }
+    setClient(prev => ({ ...prev, role: isJudge ? 'judge' : 'player' }))
+    navigate(isJudge ? 'host' : 'game')
+  }
+
+  // ─── 進行中のゲームに再参加（ScreenJoin 経由） ───
   function handleJoinAsJudge(g: GameRow, playerIndex: number) {
     setGame(g)
     setClient({ roomCode: g.id, role: 'judge', myPlayerIndex: playerIndex, myPlayerName: g.player_names[playerIndex], discardSelected: [], openSelected: [] })
@@ -100,16 +150,49 @@ export default function App() {
       key={screen}
       className={transitioning ? 'opacity-0 pointer-events-none' : 'animate-page-enter'}
     >
-      {screen === 'welcome' && <ScreenWelcome onStartGame={handleStartGame} onJoin={() => navigate('join')} />}
-      {screen === 'join' && <ScreenJoin onJoinAsJudge={handleJoinAsJudge} onJoinAsPlayer={handleJoinAsPlayer} onBack={() => navigate('welcome')} />}
+      {screen === 'welcome' && (
+        <ScreenWelcome onCreateLobby={handleCreateLobby} onJoin={() => navigate('join')} />
+      )}
+      {screen === 'join' && (
+        <ScreenJoin
+          onJoinLobby={handleJoinLobby}
+          onJoinAsJudge={handleJoinAsJudge}
+          onJoinAsPlayer={handleJoinAsPlayer}
+          onBack={() => navigate('welcome')}
+        />
+      )}
+      {screen === 'lobby' && client.roomCode && game && (
+        <ScreenLobby
+          roomCode={client.roomCode}
+          myPlayerIndex={client.myPlayerIndex}
+          isHost={client.role === 'judge'}
+          members={members}
+          onGameStarted={handleLobbyGameStarted}
+        />
+      )}
       {screen === 'host' && client.roomCode && game && (
-        <ScreenHost roomCode={client.roomCode} myPlayerIndex={client.myPlayerIndex} members={members} onWinnerDeclared={(g) => { setGame(g); navigate('showdown') }} />
+        <ScreenHost
+          roomCode={client.roomCode}
+          myPlayerIndex={client.myPlayerIndex}
+          members={members}
+          onWinnerDeclared={(g) => { setGame(g); navigate('showdown') }}
+        />
       )}
       {screen === 'game' && client.roomCode && game && (
-        <ScreenGame roomCode={client.roomCode} myPlayerIndex={client.myPlayerIndex} members={members} initialGame={game} />
+        <ScreenGame
+          roomCode={client.roomCode}
+          myPlayerIndex={client.myPlayerIndex}
+          members={members}
+          initialGame={game}
+        />
       )}
       {screen === 'showdown' && game && (
-        <ScreenShowdown game={game} isJudge={client.role === 'judge'} members={members} onNextRound={handleNextRound} />
+        <ScreenShowdown
+          game={game}
+          isJudge={client.role === 'judge'}
+          members={members}
+          onNextRound={handleNextRound}
+        />
       )}
     </div>
   )

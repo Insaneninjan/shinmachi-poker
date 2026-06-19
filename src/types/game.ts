@@ -1,5 +1,5 @@
 // ゲームフェーズ
-export type GamePhase = 'change' | 'open' | 'judge' | 'winner'
+export type GamePhase = 'lobby' | 'change' | 'open' | 'judge' | 'winner'
 
 // カード（デッキメンバー）
 export interface CardMember {

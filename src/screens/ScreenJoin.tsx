@@ -5,16 +5,19 @@ import { Layout, PageTitle, PageSub } from '../components/Layout'
 import type { GameRow } from '../types/game'
 
 interface ScreenJoinProps {
+  onJoinLobby: (game: GameRow, playerName: string) => Promise<void>
   onJoinAsJudge: (game: GameRow, playerIndex: number) => void
   onJoinAsPlayer: (game: GameRow, playerIndex: number) => void
   onBack: () => void
 }
 
-export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoinProps) {
+export function ScreenJoin({ onJoinLobby, onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoinProps) {
   const [chars, setChars] = useState(['', '', '', ''])
   const [loading, setLoading] = useState(false)
+  const [joining, setJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [game, setGame] = useState<GameRow | null>(null)
+  const [joinName, setJoinName] = useState('')
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   const code = chars.join('')
@@ -37,16 +40,13 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
   }
 
   function handleChar(val: string, idx: number) {
-    // スマホのIME確定前の文字列も考慮し、最後の1文字を大文字で取得
     const c = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(-1)
     const updated = [...chars]
     updated[idx] = c
     setChars(updated)
     if (c && idx < 3) {
-      // setStateの反映を待ってからfocusを移動（iOS Safari対策）
       setTimeout(() => inputRefs.current[idx + 1]?.focus(), 0)
     }
-    // 4桁目が入力されたら自動検索
     if (c && idx === 3) {
       const fullCode = [...chars.slice(0, 3), c].join('')
       if (fullCode.length === 4) autoSearch(fullCode)
@@ -56,20 +56,16 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
   function handleKeyDown(e: React.KeyboardEvent, idx: number) {
     if (e.key === 'Backspace') {
       if (!chars[idx] && idx > 0) {
-        // 空欄でBackspaceなら前のマスへ
         setTimeout(() => inputRefs.current[idx - 1]?.focus(), 0)
       } else if (chars[idx]) {
-        // 入力済みならクリア（onChangeが発火しないケースの保険）
         const updated = [...chars]
         updated[idx] = ''
         setChars(updated)
       }
     }
-    // 4桁揃ったらEnterで検索
     if (e.key === 'Enter' && code.length === 4) autoSearch(code)
   }
 
-  // Android の onCompositionEnd / onInput が onChange より先に来るケースへの対策
   function handleInput(e: React.FormEvent<HTMLInputElement>, idx: number) {
     handleChar((e.target as HTMLInputElement).value, idx)
   }
@@ -78,6 +74,81 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
     await autoSearch(code)
   }
 
+  // ─── ロビー待機中の部屋に名前を入力して参加 ───
+  if (game && game.phase === 'lobby') {
+    async function handleJoinLobby() {
+      if (!game) return
+      const name = joinName.trim()
+      if (!name) { setError('名前を入力してね'); return }
+      setJoining(true)
+      setError(null)
+      try {
+        await onJoinLobby(game, name)
+      } catch {
+        setError('参加に失敗しました。もう一度試してね。')
+        setJoining(false)
+      }
+    }
+
+    return (
+      <Layout>
+        <PageTitle>参加する</PageTitle>
+        <PageSub>あなたの名前を入力してね</PageSub>
+
+        {/* 現在の参加者プレビュー */}
+        <div className="bg-black/25 border border-[rgba(201,168,76,0.15)] rounded-[12px] p-4 mb-5">
+          <div className="text-[11px] text-[#c9a84c] tracking-[0.15em] mb-2">現在の参加者 ({game.player_names.length}人)</div>
+          <div className="flex flex-wrap gap-2">
+            {game.player_names.map((name, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1.5 bg-black/30 border border-[rgba(201,168,76,0.2)] rounded-full px-3 py-1 text-[13px] text-[#fdf6e3]"
+              >
+                <span
+                  className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
+                  style={{ background: i === 0 ? '#993C1D' : '#534AB7' }}
+                >
+                  {name.slice(0, 1)}
+                </span>
+                {name}
+                {i === 0 && <span className="text-[#ff8a7a] text-[10px]">H</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <input
+            autoFocus
+            className="w-full px-4 py-4 bg-black/40 border-2 border-[rgba(201,168,76,0.3)] rounded-[10px] text-[18px] text-[#fdf6e3] outline-none focus:border-[#c9a84c] placeholder-white/25 text-center tracking-wider"
+            value={joinName}
+            onChange={e => { setJoinName(e.target.value); setError(null) }}
+            onKeyDown={e => e.key === 'Enter' && handleJoinLobby()}
+            placeholder="あなたの名前"
+            maxLength={10}
+          />
+        </div>
+
+        {error && (
+          <div className="bg-[rgba(192,57,43,0.15)] border border-[rgba(192,57,43,0.4)] rounded-xl p-4 mb-4 text-[14px] text-[#ff8a7a]">
+            {error}
+          </div>
+        )}
+
+        <Button variant="gold" onClick={handleJoinLobby} disabled={joining || !joinName.trim()}>
+          {joining ? (
+            <>
+              <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin flex-shrink-0" />
+              参加中...
+            </>
+          ) : '📲 入室する'}
+        </Button>
+        <Button variant="ghost" onClick={() => setGame(null)} className="mt-2">← コード入力に戻る</Button>
+      </Layout>
+    )
+  }
+
+  // ─── 進行中のゲームに再参加（phase が lobby 以外） ───
   if (game) {
     const judgeIndex = game.judge_index
     const judgeName = game.player_names[judgeIndex]
@@ -128,12 +199,12 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
     )
   }
 
+  // ─── コード入力画面 ───
   return (
     <Layout>
-      <PageTitle>ゲームに参加</PageTitle>
-      <PageSub>ジャッジからもらった4桁のコードを入力してね</PageSub>
+      <PageTitle>部屋に参加</PageTitle>
+      <PageSub>ホストからもらった4桁のコードを入力してね</PageSub>
 
-      {/* 4桁コード入力 */}
       <div className="flex justify-center gap-3 mb-6">
         {chars.map((c, i) => (
           <input
