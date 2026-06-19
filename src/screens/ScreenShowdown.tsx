@@ -14,7 +14,7 @@ interface ScreenShowdownProps {
 
 export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenShowdownProps) {
   const { startNextRound } = useNextRound()
-  const sorted = sortShowdown(game.showdown ?? [])
+  const sorted = sortShowdown(Array.isArray(game.showdown) ? game.showdown : [])
   const nextJudgeIndex = (game.judge_index + 1) % game.player_names.length
   const nextJudgeName = game.player_names[nextJudgeIndex]
 

@@ -123,7 +123,10 @@ export function useGame({
           // Realtime の payload.new は差分のみの場合がある。
           // 既存の game state とマージして欠落フィールドを補う。
           setGame(prev => {
-            const merged: GameRow = { ...(prev ?? {} as GameRow), ...(payload.new as GameRow) }
+            const newData = payload.new as Partial<GameRow>
+            const merged: GameRow = { ...(prev ?? {} as GameRow), ...newData }
+            // showdown が配列でない場合は空配列に正規化（Realtime の JSONB 不具合対策）
+            if (!Array.isArray(merged.showdown)) merged.showdown = []
             // ジャッジのみ自動フェーズ進行（マージ後のデータで判定）
             if (isJudge) {
               handleAutoPhaseAdvance(merged)

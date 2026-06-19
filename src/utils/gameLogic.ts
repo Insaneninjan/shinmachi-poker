@@ -161,6 +161,6 @@ export function amIJudge(myPlayerIndex: number, judgeIndex: number): boolean {
  * showdown を playerIndex 順にソート
  */
 export function sortShowdown(showdown: ShowdownEntry[] | undefined | null): ShowdownEntry[] {
-  if (!showdown) return []
+  if (!Array.isArray(showdown)) return []
   return [...showdown].sort((a, b) => a.playerIndex - b.playerIndex)
 }

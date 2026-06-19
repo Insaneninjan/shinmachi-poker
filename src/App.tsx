@@ -35,13 +35,21 @@ export default function App() {
         (payload) => {
           // payload.new は差分のみのため、前の state と merge する
           const diff = payload.new as Partial<GameRow>
-          if (diff.phase === 'winner') {
-            setGame(prev => ({ ...(prev ?? {} as GameRow), ...diff } as GameRow))
+          // showdown が配列でない場合（Realtime の JSONB シリアライズ不具合対策）は空配列に正規化
+          const safeShowdown = Array.isArray(diff.showdown) ? diff.showdown : undefined
+          const safeDiff = safeShowdown !== undefined ? { ...diff, showdown: safeShowdown } : diff
+          if (safeDiff.phase === 'winner') {
+            setGame(prev => ({ ...(prev ?? {} as GameRow), ...safeDiff } as GameRow))
             navigate('showdown')
           }
-          if (diff.phase === 'change' && screen === 'showdown') {
-            setGame(prev => ({ ...(prev ?? {} as GameRow), ...diff } as GameRow))
-            const iAmNowJudge = amIJudge(client.myPlayerIndex, diff.judge_index ?? 0)
+          if (safeDiff.phase === 'change' && screen === 'showdown') {
+            setGame(prev => {
+              const merged = { ...(prev ?? {} as GameRow), ...safeDiff } as GameRow
+              // showdown が配列でない場合は強制的に空配列にリセット
+              if (!Array.isArray(merged.showdown)) merged.showdown = []
+              return merged
+            })
+            const iAmNowJudge = amIJudge(client.myPlayerIndex, safeDiff.judge_index ?? 0)
             setClient(prev => ({ ...prev, role: iAmNowJudge ? 'judge' : 'player' }))
             navigate(iAmNowJudge ? 'host' : 'game')
           }
