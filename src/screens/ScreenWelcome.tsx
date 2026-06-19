@@ -54,6 +54,10 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
+  // 名前編集：編集中のindex（null = 非編集）と入力値
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editingName, setEditingName] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
   const [avatarsAvailable, setAvatarsAvailable] = useState<boolean | null>(null)
   const [avatarsError, setAvatarsError] = useState<string | null>(null)
   const [avatarsList, setAvatarsList] = useState<Array<{ name?: string; id?: string | null; updated_at?: string | null }> | null>(null)
@@ -238,6 +242,34 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
     setMembers(members.filter((_, idx) => idx !== i))
   }
 
+  function startEditing(i: number) {
+    setEditingIndex(i)
+    setEditingName(members[i].name)
+  }
+
+  async function saveName(i: number) {
+    const trimmed = editingName.trim()
+    if (!trimmed) { setEditingIndex(null); return }
+    if (trimmed === members[i].name) { setEditingIndex(null); return }
+
+    setEditSaving(true)
+    // Supabase members テーブルを旧名前で検索して UPDATE
+    const oldName = members[i].name
+    const { error } = await supabase
+      .from('members')
+      .update({ name: trimmed })
+      .eq('name', oldName)
+    if (error) {
+      alert(`保存に失敗しました: ${error.message}`)
+      setEditSaving(false)
+      return
+    }
+    // ローカル state も更新
+    setMembers(prev => prev.map((m, idx) => idx === i ? { ...m, name: trimmed } : m))
+    setEditingIndex(null)
+    setEditSaving(false)
+  }
+
   function addPlayer() { setPlayerNames([...playerNames, '']) }
   function removePlayer(i: number) {
     if (playerNames.length <= 2) { alert('最低2人必要です'); return }
@@ -386,17 +418,54 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
       <div className="grid grid-cols-3 gap-2 mb-4">
         {members.map((m, i) => (
           <div key={i} className="bg-black/35 border border-[rgba(201,168,76,0.2)] rounded-xl p-3 text-center relative">
+            {/* 削除ボタン */}
             <button
               className="absolute top-1 right-1 text-white/25 text-sm hover:text-red-400 transition-colors bg-none border-none cursor-pointer"
               onClick={() => removeMember(i)}
             >✕</button>
+            {/* 編集ボタン */}
+            {editingIndex !== i && (
+              <button
+                className="absolute top-1 left-1 text-white/25 text-sm hover:text-[#c9a84c] transition-colors bg-none border-none cursor-pointer"
+                onClick={() => startEditing(i)}
+                title="名前を編集"
+              >✏️</button>
+            )}
+            {/* アバター */}
             <div
               className="w-[50px] h-[50px] rounded-full mx-auto mb-2 flex items-center justify-center text-xl font-bold text-white overflow-hidden"
               style={{ background: m.color, border: '2px solid rgba(201,168,76,0.3)' }}
             >
               {m.photo ? <img src={m.photo} className="w-full h-full object-cover" alt={m.name} /> : m.name.slice(0, 1)}
             </div>
-            <div className="text-[11px] text-white/80 font-medium">{m.name}</div>
+            {/* 名前 or インライン編集 */}
+            {editingIndex === i ? (
+              <div className="flex flex-col gap-1">
+                <input
+                  autoFocus
+                  className="w-full px-2 py-1 bg-black/60 border border-[#c9a84c] rounded text-[12px] text-[#fdf6e3] outline-none text-center"
+                  value={editingName}
+                  onChange={e => setEditingName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') saveName(i)
+                    if (e.key === 'Escape') setEditingIndex(null)
+                  }}
+                />
+                <div className="flex gap-1 justify-center">
+                  <button
+                    className="text-[10px] px-2 py-[2px] rounded bg-[rgba(201,168,76,0.3)] text-[#c9a84c] border border-[rgba(201,168,76,0.4)] cursor-pointer disabled:opacity-40"
+                    onClick={() => saveName(i)}
+                    disabled={editSaving}
+                  >{editSaving ? '…' : '✓'}</button>
+                  <button
+                    className="text-[10px] px-2 py-[2px] rounded bg-black/40 text-white/50 border border-white/10 cursor-pointer"
+                    onClick={() => setEditingIndex(null)}
+                  >✕</button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-[11px] text-white/80 font-medium">{m.name}</div>
+            )}
           </div>
         ))}
       </div>
