@@ -76,7 +76,7 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
 
         const { data, error } = await supabase
           .from('members')
-          .select('name,color,suit,avatar_path')
+          .select('id,name,color,suit,avatar_path')   // id を取得して名前重複バグを防ぐ
           .order('created_at', { ascending: true })
         if (error) {
           console.warn('Failed to fetch members from Supabase:', error.message)
@@ -86,8 +86,9 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
         if (!data || data.length === 0) return
 
         // build base members without photo
-        type MemberRow = { name: string; color?: string | null; suit?: CardMember['suit'] | null; avatar_path?: string | null }
+        type MemberRow = { id: string; name: string; color?: string | null; suit?: CardMember['suit'] | null; avatar_path?: string | null }
         const base: CardMember[] = data.map((r: MemberRow, i: number) => ({
+          id: r.id,
           name: r.name,
           photo: null,
           color: r.color ?? COLORS[i % COLORS.length],
@@ -239,7 +240,16 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
   }
 
   function removeMember(i: number) {
-    setMembers(members.filter((_, idx) => idx !== i))
+    const target = members[i]
+    // 編集中のインデックスが削除対象以降ならリセット（別カードを誤って編集するバグ防止）
+    if (editingIndex !== null && editingIndex >= i) setEditingIndex(null)
+    setMembers(prev => prev.filter((_, idx) => idx !== i))
+    // DB からも削除（id があれば確実に、なければ name+color で特定）
+    if (target.id) {
+      supabase.from('members').delete().eq('id', target.id).then(({ error }) => {
+        if (error) console.warn('members delete failed:', error.message)
+      })
+    }
   }
 
   function startEditing(i: number) {
@@ -253,18 +263,17 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
     if (trimmed === members[i].name) { setEditingIndex(null); return }
 
     setEditSaving(true)
-    // Supabase members テーブルを旧名前で検索して UPDATE
-    const oldName = members[i].name
-    const { error } = await supabase
-      .from('members')
-      .update({ name: trimmed })
-      .eq('name', oldName)
+    const target = members[i]
+    // id で特定するのが最も安全（同名メンバーが複数いても誤更新しない）
+    const filter = target.id
+      ? supabase.from('members').update({ name: trimmed }).eq('id', target.id)
+      : supabase.from('members').update({ name: trimmed }).eq('name', target.name).eq('color', target.color)
+    const { error } = await filter
     if (error) {
       alert(`保存に失敗しました: ${error.message}`)
       setEditSaving(false)
       return
     }
-    // ローカル state も更新
     setMembers(prev => prev.map((m, idx) => idx === i ? { ...m, name: trimmed } : m))
     setEditingIndex(null)
     setEditSaving(false)
