@@ -46,18 +46,21 @@ export function dealHands(
 /**
  * チェンジフェーズ：全員完了しているか
  */
-export function isAllChanged(hands: PlayerHand[]): boolean {
-  return hands.length > 0 && hands.every((h) => h.changed)
+export function isAllChanged(hands: PlayerHand[] | undefined): boolean {
+  if (!hands || hands.length === 0) return false
+  return hands.every((h) => h.changed)
 }
 
 /**
  * オープンフェーズ：全員完了しているか
  */
 export function isAllOpened(
-  showdown: ShowdownEntry[],
-  hands: PlayerHand[]
+  showdown: ShowdownEntry[] | undefined,
+  hands: PlayerHand[] | undefined
 ): boolean {
-  return hands.length > 0 && showdown.length >= hands.length
+  if (!hands || hands.length === 0) return false
+  if (!showdown) return false
+  return showdown.length >= hands.length
 }
 
 /**

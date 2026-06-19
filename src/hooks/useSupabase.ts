@@ -76,7 +76,7 @@ export function useGame({
     // 自分がジャッジでなければ何もしない
     if (!amIJudge(myPlayerIndex, g.judge_index)) return
 
-    const { phase, hands, showdown } = g
+    const { phase, hands = [], showdown = [] } = g
 
     if (phase === 'change' && isAllChanged(hands)) {
       processingRef.current = true
@@ -120,13 +120,16 @@ export function useGame({
         },
         (payload) => {
           if (!isMounted) return
-          const newGame = payload.new as GameRow
-          setGame(newGame)
-
-          // ジャッジのみ自動フェーズ進行
-          if (isJudge) {
-            handleAutoPhaseAdvance(newGame)
-          }
+          // Realtime の payload.new は差分のみの場合がある。
+          // 既存の game state とマージして欠落フィールドを補う。
+          setGame(prev => {
+            const merged: GameRow = { ...(prev ?? {} as GameRow), ...(payload.new as GameRow) }
+            // ジャッジのみ自動フェーズ進行（マージ後のデータで判定）
+            if (isJudge) {
+              handleAutoPhaseAdvance(merged)
+            }
+            return merged
+          })
         }
       )
       .subscribe()
