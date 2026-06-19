@@ -6,11 +6,16 @@ import { ScreenJoin } from './screens/ScreenJoin'
 import { ScreenHost } from './screens/ScreenHost'
 import { ScreenGame } from './screens/ScreenGame'
 import { ScreenShowdown } from './screens/ScreenShowdown'
+import { ScreenGate } from './screens/ScreenGate'
 import type { GameRow, CardMember, ClientState } from './types/game'
 
 type AppScreen = 'welcome' | 'join' | 'host' | 'game' | 'showdown'
 
 export default function App() {
+  // セッション内で合言葉を突破済みかチェック
+  const [unlocked, setUnlocked] = useState(
+    () => sessionStorage.getItem('gate_unlocked') === '1'
+  )
   const [screen, setScreen] = useState<AppScreen>('welcome')
   const [transitioning, setTransitioning] = useState(false)
   const [game, setGame] = useState<GameRow | null>(null)
@@ -93,6 +98,10 @@ export default function App() {
   function handleNextRound() {
     // buildNextRound は ScreenShowdown 内の useNextRound が呼ぶ
     // Realtime 経由で全員に change フェーズが伝わる
+  }
+
+  if (!unlocked) {
+    return <ScreenGate onUnlock={() => setUnlocked(true)} />
   }
 
   return (
