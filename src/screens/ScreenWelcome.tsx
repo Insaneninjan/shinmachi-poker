@@ -294,25 +294,59 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
 
   if (sub === 'home') return (
     <Layout>
-      <div className="text-center py-10">
+      {/* TV番組風タイトルバナー */}
+      <div className="text-center pt-8 pb-4">
+        {/* 上部キラキラ */}
+        <div className="flex justify-center gap-4 mb-2 text-yellow-300 text-lg">
+          <span className="animate-sparkle" style={{ animationDelay: '0s' }}>✦</span>
+          <span className="animate-sparkle" style={{ animationDelay: '0.3s' }}>✦</span>
+          <span className="animate-sparkle" style={{ animationDelay: '0.6s' }}>✦</span>
+        </div>
+
+        {/* メインタイトルバナー */}
         <div
-          className="w-[110px] h-[110px] rounded-full mx-auto mb-5 flex items-center justify-center text-[52px]"
+          className="relative mx-auto mb-4 px-4 py-3 rounded-[12px]"
           style={{
-            border: '3px solid #c9a84c',
-            background: 'radial-gradient(circle, #1e6b42, #0e3d26)',
-            boxShadow: '0 0 30px rgba(201,168,76,0.3)',
-            animation: 'pulse-ring 3s ease-in-out infinite',
+            background: 'linear-gradient(180deg, #2d8a2d 0%, #1a5c1a 40%, #2d8a2d 100%)',
+            border: '4px solid #FFE135',
+            boxShadow: '0 0 30px rgba(255,225,53,0.4), inset 0 2px 0 rgba(255,255,255,0.2)',
+            maxWidth: '340px',
           }}
         >
-          🃏
+          {/* バナー左右の装飾 */}
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 w-3 h-8 rounded-l-full" style={{ background: '#FFE135' }} />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 w-3 h-8 rounded-r-full" style={{ background: '#FFE135' }} />
+          <h1
+            className="font-zen text-[28px] leading-tight animate-banner-glow"
+            style={{
+              color: '#FFE135',
+              WebkitTextStroke: '2px #1a4d1a',
+              textShadow: '0 0 20px rgba(255,225,53,0.8), 2px 2px 0 #1a4d1a',
+              letterSpacing: '0.02em',
+            }}
+          >
+            新町ポーカー
+          </h1>
+          <p className="text-white/80 text-[11px] tracking-[0.15em] mt-1">
+            ～ 友達の顔でポーカー ～
+          </p>
         </div>
-        <h1 className="font-playfair text-[32px] text-[#c9a84c]" style={{ textShadow: '0 0 20px rgba(201,168,76,0.5)' }}>
-          新町ポーカー
-        </h1>
-        <p className="text-white/40 text-[13px] tracking-[0.12em] mt-2">
-          友達の顔でポーカーを楽しもう
-        </p>
+
+        {/* カードアイコン */}
+        <div className="flex justify-center gap-2 mb-4 text-[32px]">
+          <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🃏</span>
+          <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🎴</span>
+          <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🃏</span>
+        </div>
+
+        {/* 下部キラキラ */}
+        <div className="flex justify-center gap-4 text-yellow-300 text-lg">
+          <span className="animate-sparkle" style={{ animationDelay: '0.9s' }}>✦</span>
+          <span className="animate-sparkle" style={{ animationDelay: '1.2s' }}>✦</span>
+          <span className="animate-sparkle" style={{ animationDelay: '1.5s' }}>✦</span>
+        </div>
       </div>
+
       <GoldDivider />
       <div className="space-y-3">
         <Button variant="gold" onClick={() => setSub('menu')}>♛ ゲームをセットアップ</Button>

@@ -6,19 +6,30 @@ export function Layout({ children }: { children: ReactNode }) {
       className="min-h-screen relative"
       style={{
         background:
-          'radial-gradient(ellipse at 50% 0%, #1e6b42 0%, #0e3d26 60%, #0a1628 100%)',
+          'radial-gradient(ellipse at 50% 20%, #9b2020 0%, #6b0f0f 50%, #3d0808 100%)',
       }}
     >
-      {/* フェルトテクスチャ */}
+      {/* 赤フェルトテクスチャ */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            repeating-linear-gradient(45deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 8px),
-            repeating-linear-gradient(-45deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 8px)
+            repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 1px, transparent 6px),
+            repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 1px, transparent 6px)
           `,
         }}
       />
+      {/* スポットライト（中央上から） */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255,240,180,0.12) 0%, transparent 70%)',
+        }}
+      />
+      {/* キラキラ装飾 */}
+      <div className="fixed top-6 left-6 text-yellow-300 text-xl pointer-events-none animate-sparkle" style={{ animationDelay: '0s' }}>✦</div>
+      <div className="fixed top-12 right-8 text-yellow-200 text-sm pointer-events-none animate-sparkle" style={{ animationDelay: '0.5s' }}>✦</div>
+      <div className="fixed top-28 left-10 text-yellow-100 text-xs pointer-events-none animate-sparkle" style={{ animationDelay: '1s' }}>✦</div>
       <div className="relative max-w-[480px] mx-auto px-4 pb-20">
         {children}
       </div>
@@ -29,33 +40,26 @@ export function Layout({ children }: { children: ReactNode }) {
 // ゴールドの仕切り線
 export function GoldDivider() {
   return (
-    <div
-      className="h-px my-5"
-      style={{
-        background: 'linear-gradient(90deg, transparent, #c9a84c, transparent)',
-      }}
-    />
+    <div className="flex items-center gap-2 my-5">
+      <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, #FFE135)' }} />
+      <span className="text-[#FFE135] text-xs">✦</span>
+      <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, #FFE135, transparent)' }} />
+    </div>
   )
 }
 
 // セクションラベル
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 text-[11px] text-[#c9a84c] font-bold tracking-[0.15em] uppercase mb-3">
+    <div className="flex items-center gap-2 text-[11px] text-[#FFE135] font-bold tracking-[0.15em] uppercase mb-3">
       <span
         className="flex-1 h-px"
-        style={{
-          background:
-            'linear-gradient(90deg, transparent, rgba(201,168,76,0.4))',
-        }}
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,225,53,0.5))' }}
       />
       {children}
       <span
         className="flex-1 h-px"
-        style={{
-          background:
-            'linear-gradient(90deg, rgba(201,168,76,0.4), transparent)',
-        }}
+        style={{ background: 'linear-gradient(90deg, rgba(255,225,53,0.5), transparent)' }}
       />
     </div>
   )
@@ -79,7 +83,9 @@ export function PageSub({ children }: { children: ReactNode }) {
 // パネル類
 export function FormPanel({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-black/30 border border-[rgba(201,168,76,0.2)] rounded-[14px] p-5 mb-4">
+    <div className="bg-black/50 border-2 border-[rgba(255,225,53,0.3)] rounded-[14px] p-5 mb-4"
+      style={{ boxShadow: 'inset 0 0 20px rgba(0,0,0,0.3)' }}
+    >
       {children}
     </div>
   )
@@ -113,13 +119,19 @@ export function WarningPanel({ children }: { children: ReactNode }) {
 export function RoomCodePanel({ code }: { code: string }) {
   return (
     <div
-      className="bg-black/40 border border-[#c9a84c] rounded-[16px] p-6 text-center mb-4"
-      style={{ boxShadow: '0 0 30px rgba(201,168,76,0.15)' }}
+      className="rounded-[16px] p-6 text-center mb-4 relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, #1a0a0a 0%, #2d0d0d 100%)',
+        border: '3px solid #FFE135',
+        boxShadow: '0 0 30px rgba(255,225,53,0.3), inset 0 0 20px rgba(0,0,0,0.5)',
+      }}
     >
-      <div className="text-[11px] text-[#c9a84c] font-bold tracking-[0.2em] mb-3">
+      <div className="text-[11px] text-[#FFE135] font-bold tracking-[0.2em] mb-3">
         — ROOM CODE —
       </div>
-      <div className="font-playfair text-[56px] text-[#fdf6e3] tracking-[14px]">
+      <div className="font-playfair text-[56px] text-[#FFE135] tracking-[14px]"
+        style={{ textShadow: '0 0 20px rgba(255,225,53,0.6)' }}
+      >
         {code}
       </div>
     </div>
@@ -129,7 +141,9 @@ export function RoomCodePanel({ code }: { code: string }) {
 // バッジ
 export function BadgeGold({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-block px-2 py-[2px] rounded-md text-[11px] font-bold bg-[rgba(201,168,76,0.2)] text-[#c9a84c] border border-[rgba(201,168,76,0.3)]">
+    <span className="inline-block px-2 py-[2px] rounded-md text-[11px] font-bold text-[#1a0a00] border border-[#c9a84c]"
+      style={{ background: 'linear-gradient(135deg, #FFE135, #c9a84c)' }}
+    >
       {children}
     </span>
   )
@@ -137,7 +151,7 @@ export function BadgeGold({ children }: { children: ReactNode }) {
 
 export function BadgeGreen({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-block px-2 py-[2px] rounded-md text-[11px] font-bold bg-[rgba(39,174,96,0.2)] text-[#4ade80] border border-[rgba(39,174,96,0.3)]">
+    <span className="inline-block px-2 py-[2px] rounded-md text-[11px] font-bold bg-[rgba(39,174,96,0.25)] text-[#4ade80] border border-[rgba(39,174,96,0.4)]">
       {children}
     </span>
   )
@@ -160,16 +174,20 @@ const PHASE_DOT: Record<string, string> = {
 export function PhaseBanner({ phase, name, desc }: PhaseBannerProps) {
   const dotColor = PHASE_DOT[phase] ?? '#facc15'
   return (
-    <div className="flex items-center gap-3 bg-black/35 border border-[rgba(201,168,76,0.3)] rounded-[12px] px-4 py-3 mb-4">
+    <div
+      className="flex items-center gap-3 rounded-[12px] px-4 py-3 mb-4"
+      style={{
+        background: 'linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(30,10,10,0.7) 100%)',
+        border: `2px solid ${dotColor}`,
+        boxShadow: `0 0 12px ${dotColor}44`,
+      }}
+    >
       <span
         className="w-[10px] h-[10px] rounded-full flex-shrink-0"
-        style={{
-          background: dotColor,
-          boxShadow: `0 0 8px ${dotColor}`,
-        }}
+        style={{ background: dotColor, boxShadow: `0 0 8px ${dotColor}` }}
       />
-      <span className="text-[13px] font-bold text-[#fdf6e3]">{name}</span>
-      <span className="text-[11px] text-white/40 ml-auto">{desc}</span>
+      <span className="text-[13px] font-bold text-white">{name}</span>
+      <span className="text-[11px] text-white/50 ml-auto">{desc}</span>
     </div>
   )
 }
