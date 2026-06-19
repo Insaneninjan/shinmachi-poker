@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '../components/Button'
 
-const SECRET = 'poker2026'
+const SECRET = '7089'
 
 interface ScreenGateProps {
   onUnlock: () => void
