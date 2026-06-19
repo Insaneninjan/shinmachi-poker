@@ -39,7 +39,7 @@ export function ScreenHost({ roomCode, myPlayerIndex, members, onWinnerDeclared 
     </Layout>
   )
 
-  const { phase, hands, showdown, player_names, judge_index } = game
+  const { phase, hands = [], showdown = [], player_names = [], judge_index } = game
   const judgeName = player_names[judge_index]
   const total = hands.length
   const readyCount = phase === 'change'

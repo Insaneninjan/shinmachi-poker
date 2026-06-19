@@ -25,7 +25,7 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
   })
 
   const currentGame = game ?? initialGame
-  const { phase, hands, showdown } = currentGame
+  const { phase, hands = [], showdown = [] } = currentGame
   const myHand: PlayerHand | undefined = hands.find(h => h.index === myPlayerIndex)
 
   const [discardSelected, setDiscardSelected] = useState<number[]>([])
