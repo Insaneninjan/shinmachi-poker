@@ -5,6 +5,7 @@ interface CardProps {
   card: CardMember
   size?: 'sm' | 'lg'
   selected?: boolean
+  deselected?: boolean   // オープンフェーズで「出さない」カードを明示的に暗くする
   discarding?: boolean
   onClick?: () => void
   dealIndex?: number
@@ -14,6 +15,7 @@ export function Card({
   card,
   size = 'sm',
   selected = false,
+  deselected = false,
   discarding = false,
   onClick,
   dealIndex = 0,
@@ -25,19 +27,21 @@ export function Card({
       onClick={onClick}
       style={{ animationDelay: delay }}
       className={cn(
-        'aspect-[2/3] animate-deal-in',
-        (size === 'lg' || onClick) && 'cursor-pointer transition-transform duration-150',
-        selected && '-translate-y-2.5',
+        'aspect-[2/3] animate-deal-in min-w-0',
+        (size === 'lg' || onClick) && 'cursor-pointer transition-all duration-150',
+        onClick && 'active:scale-95',
+        selected && '-translate-y-3 scale-[1.04]',
         discarding && '-translate-y-2.5',
+        deselected && 'opacity-35 scale-[0.94]',
+        onClick && !selected && !discarding && !deselected && 'hover:brightness-105',
       )}
     >
       <div
         className="relative w-full h-full rounded-lg overflow-hidden flex flex-col"
         style={{
           background: 'linear-gradient(170deg, #fefcf0 0%, #f2ead8 100%)',
-          // 状態によって影とボーダーを変える
           boxShadow: selected
-            ? '0 6px 20px rgba(0,0,0,0.5), 0 0 0 2px #c9a84c'
+            ? '0 10px 28px rgba(0,0,0,0.6), 0 0 0 2.5px #c9a84c, 0 0 14px rgba(201,168,76,0.8)'
             : discarding
             ? '0 6px 20px rgba(0,0,0,0.5), 0 0 0 2px #e24b4a'
             : '0 3px 10px rgba(0,0,0,0.5), 0 0 0 1.5px #c9a84c',
@@ -64,6 +68,13 @@ export function Card({
               : card.name.slice(0, 1)
             }
           </div>
+
+          {/* 選択中チェックバッジ（lgサイズのみ） */}
+          {selected && size === 'lg' && (
+            <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center shadow-lg">
+              <span className="text-[10px] font-bold text-[#1a0a00]">✓</span>
+            </div>
+          )}
         </div>
 
         {/* ネームラベル（番組テロップ風） */}

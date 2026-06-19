@@ -132,7 +132,9 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
       {phase === 'change' && (
         changeSubmitted ? (
           <>
-            <SuccessPanel>✅ チェンジ完了！次のフェーズが始まるまで待ってね</SuccessPanel>
+            <div className="animate-slide-down">
+              <SuccessPanel>✅ チェンジ完了！次のフェーズが始まるまで待ってね</SuccessPanel>
+            </div>
             <SectionLabel>あなたの手札</SectionLabel>
             <div className="grid grid-cols-5 gap-2 mb-4">
               {myHand.cards.map((c, i) => <Card key={i} card={c} size="lg" selected dealIndex={i} />)}
@@ -157,7 +159,12 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
               タップしたカードを捨てて引き直します（0枚でもOK）
             </p>
             <Button variant="gold" onClick={submitChange} disabled={submitting}>
-              {submitting ? '送信中...' : '🔄 チェンジ完了'}
+              {submitting ? (
+                <>
+                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin flex-shrink-0" />
+                  送信中...
+                </>
+              ) : '🔄 チェンジ完了'}
             </Button>
           </>
         )
@@ -167,7 +174,9 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
       {phase === 'open' && (
         openSubmitted ? (
           <>
-            <SuccessPanel>✅ オープン完了！ジャッジが判定するまで待ってね</SuccessPanel>
+            <div className="animate-slide-down">
+              <SuccessPanel>✅ オープン完了！ジャッジが判定するまで待ってね</SuccessPanel>
+            </div>
             {(() => {
               const myEntry = showdown.find(s => s.playerIndex === myPlayerIndex)
               return myEntry ? (
@@ -190,6 +199,7 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
                   card={c}
                   size="lg"
                   selected={openSelected.includes(i)}
+                  deselected={!openSelected.includes(i)}
                   onClick={() => toggleOpen(i)}
                   dealIndex={i}
                 />
@@ -234,12 +244,17 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
                   className="w-full px-4 py-3 bg-black/40 border border-[rgba(201,168,76,0.3)] rounded-lg text-[15px] text-[#fdf6e3] outline-none focus:border-[#c9a84c] placeholder-white/30"
                   value={yakuText}
                   onChange={e => setYakuText(e.target.value)}
-                  placeholder="例: 元カノフラッシュ、団地5カード…"
+                  placeholder="入力してください"
                 />
               </div>
             </div>
             <Button variant="gold" onClick={submitOpen} disabled={submitting}>
-              {submitting ? '送信中...' : '⚡ オープン！'}
+              {submitting ? (
+                <>
+                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin flex-shrink-0" />
+                  送信中...
+                </>
+              ) : '⚡ オープン！'}
             </Button>
           </>
         )
@@ -255,7 +270,7 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
           {sortShowdown(showdown).map(s => {
             const ncols = Math.min(s.cards.length, 5)
             return (
-              <div key={s.playerIndex} className="bg-black/35 border border-[rgba(201,168,76,0.25)] rounded-[16px] p-4 mb-3 animate-flip-in">
+              <div key={s.playerIndex} className="bg-black/35 border border-[rgba(201,168,76,0.25)] rounded-[16px] p-4 mb-3 overflow-hidden animate-flip-in">
                 <div className="flex items-center gap-2 mb-2">
                   <div
                     className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white overflow-hidden"

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useGame } from '../hooks/useSupabase'
 import { supabase } from '../hooks/useSupabase'
 import { Card } from '../components/Card'
@@ -24,11 +25,23 @@ export function ScreenHost({ roomCode, myPlayerIndex, members, onWinnerDeclared 
     members,
   })
 
-  async function declareWinner(name: string) {
-    if (!game) return
-    if (!window.confirm(`「${name}」を勝者にしますか？`)) return
-    await supabase.from('games').update({ phase: 'winner', winner: name }).eq('id', roomCode)
-    onWinnerDeclared({ ...game, phase: 'winner', winner: name })
+  const [pendingWinner, setPendingWinner] = useState<string | null>(null)
+  const [declaring, setDeclaring] = useState(false)
+
+  function openConfirm(name: string) {
+    setPendingWinner(name)
+  }
+
+  async function confirmDeclare() {
+    if (!game || !pendingWinner) return
+    setDeclaring(true)
+    try {
+      await supabase.from('games').update({ phase: 'winner', winner: pendingWinner }).eq('id', roomCode)
+      onWinnerDeclared({ ...game, phase: 'winner', winner: pendingWinner })
+    } finally {
+      setDeclaring(false)
+      setPendingWinner(null)
+    }
   }
 
   if (!game) return (
@@ -86,7 +99,7 @@ export function ScreenHost({ roomCode, myPlayerIndex, members, onWinnerDeclared 
             return (
               <div
                 key={s.playerIndex}
-                className="bg-black/35 border border-[rgba(201,168,76,0.25)] rounded-[16px] p-4 mb-4 animate-flip-in"
+                className="bg-black/35 border border-[rgba(201,168,76,0.25)] rounded-[16px] p-4 mb-4 overflow-hidden animate-flip-in"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div
@@ -111,7 +124,7 @@ export function ScreenHost({ roomCode, myPlayerIndex, members, onWinnerDeclared 
                 </div>
                 <Button
                   variant="gold"
-                  onClick={() => declareWinner(s.player)}
+                  onClick={() => openConfirm(s.player)}
                   className="mt-3"
                 >
                   👑 この人を勝者にする
@@ -120,6 +133,50 @@ export function ScreenHost({ roomCode, myPlayerIndex, members, onWinnerDeclared 
             )
           })}
         </>
+      )}
+
+      {/* 勝者宣言確認モーダル */}
+      {pendingWinner && (
+        <div className="fixed inset-0 bg-black/75 flex items-end justify-center z-50 animate-fade-up pb-8 px-4">
+          <div
+            className="w-full max-w-[400px] rounded-[20px] p-6"
+            style={{
+              background: 'linear-gradient(160deg, #1a0a0a 0%, #2d0d0d 100%)',
+              border: '2px solid #c9a84c',
+              boxShadow: '0 0 40px rgba(201,168,76,0.3)',
+            }}
+          >
+            <p className="text-[18px] font-bold text-white text-center mb-1">👑 勝者を宣言しますか？</p>
+            <p className="text-[15px] text-[#c9a84c] font-playfair text-center mb-6">
+              「{pendingWinner}」の勝利として確定します
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="ghost"
+                fullWidth={false}
+                onClick={() => setPendingWinner(null)}
+                className="flex-1"
+                disabled={declaring}
+              >
+                キャンセル
+              </Button>
+              <Button
+                variant="gold"
+                fullWidth={false}
+                onClick={confirmDeclare}
+                disabled={declaring}
+                className="flex-1"
+              >
+                {declaring ? (
+                  <>
+                    <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin flex-shrink-0" />
+                    宣言中...
+                  </>
+                ) : '✓ 確定'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       <GoldDivider />

@@ -14,7 +14,7 @@ interface ScreenShowdownProps {
 
 export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenShowdownProps) {
   const { startNextRound } = useNextRound()
-  const sorted = sortShowdown(game.showdown)
+  const sorted = sortShowdown(game.showdown ?? [])
   const nextJudgeIndex = (game.judge_index + 1) % game.player_names.length
   const nextJudgeName = game.player_names[nextJudgeIndex]
 
@@ -26,7 +26,7 @@ export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenSh
   return (
     <Layout>
       {/* 勝者発表 */}
-      <div className="text-center py-8 animate-winner-pop">
+      <div className="text-center py-8 animate-winner-pop" style={{ animationDelay: '0.2s' }}>
         <span className="text-[56px] block mb-2">👑</span>
         <div
           className="font-playfair text-[32px] text-[#c9a84c]"
@@ -38,9 +38,7 @@ export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenSh
       </div>
 
       {/* 次のジャッジ */}
-      <div
-        className="bg-[rgba(192,57,43,0.1)] border border-[rgba(192,57,43,0.3)] rounded-[14px] p-5 text-center mb-6"
-      >
+      <div className="bg-[rgba(192,57,43,0.1)] border border-[rgba(192,57,43,0.3)] rounded-[14px] p-5 text-center mb-6">
         <div className="text-[11px] text-[#ff8a7a] tracking-[0.15em] font-bold mb-2">— 次のジャッジ —</div>
         <div className="font-playfair text-[24px] text-[#fdf6e3]">{nextJudgeName}</div>
       </div>
@@ -53,12 +51,12 @@ export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenSh
         return (
           <div
             key={s.playerIndex}
-            className={`rounded-[16px] p-4 mb-4 border animate-flip-in ${
+            className={`rounded-[16px] p-4 mb-4 border overflow-hidden animate-flip-in ${
               isWinner
                 ? 'bg-[rgba(201,168,76,0.08)] border-[#c9a84c] shadow-[0_0_20px_rgba(201,168,76,0.3)]'
                 : 'bg-black/35 border-[rgba(201,168,76,0.25)]'
             }`}
-            style={{ animationDelay: `${idx * 0.15}s` }}
+            style={{ animationDelay: `${idx * 0.12}s` }}
           >
             <div className="flex items-center gap-3 mb-3">
               <div
