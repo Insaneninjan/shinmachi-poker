@@ -19,6 +19,9 @@ export function ScreenJoin({ onJoinLobby, onJoinAsJudge, onJoinAsPlayer, onBack 
   const [game, setGame] = useState<GameRow | null>(null)
   const [joinName, setJoinName] = useState('')
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  // React の state 更新は非同期バッチのため、Enter 2連打などで
+  // joining=false のまま2回目が走る。ref で同期的にガードする。
+  const joiningRef = useRef(false)
 
   const code = chars.join('')
 
@@ -77,15 +80,17 @@ export function ScreenJoin({ onJoinLobby, onJoinAsJudge, onJoinAsPlayer, onBack 
   // ─── ロビー待機中の部屋に名前を入力して参加 ───
   if (game && game.phase === 'lobby') {
     async function handleJoinLobby() {
-      if (!game) return
+      if (!game || joiningRef.current) return  // 二重呼び出しを ref で即時ブロック
       const name = joinName.trim()
       if (!name) { setError('名前を入力してね'); return }
+      joiningRef.current = true  // 同期的にフラグを立てる
       setJoining(true)
       setError(null)
       try {
         await onJoinLobby(game, name)
       } catch {
         setError('参加に失敗しました。もう一度試してね。')
+        joiningRef.current = false
         setJoining(false)
       }
     }
