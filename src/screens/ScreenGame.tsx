@@ -37,6 +37,10 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
   const [openSubmitted, setOpenSubmitted] = useState(false)
 
   // フェーズが切り替わったらリセット
+  // ※ myHand・showdown・myPlayerIndex を deps に含めると
+  //   Realtime更新の度にリセットされるため phase のみを監視する。
+  //   ただし参照する値はレンダー時の最新値を使う（クロージャ問題なし）。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (phase === 'change') {
       setDiscardSelected([])
@@ -49,7 +53,7 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
       const myEntry = showdown.find(s => s.playerIndex === myPlayerIndex)
       setOpenSubmitted(!!myEntry)
     }
-  }, [phase])
+  }, [phase]) // phase のみ意図的に監視（コメント参照）
 
   const PHASE_INFO: Record<string, { name: string; desc: string }> = {
     change: { name: 'チェンジフェーズ', desc: '捨てるカードを選んでチェンジしよう' },

@@ -3,6 +3,7 @@ export type GamePhase = 'change' | 'open' | 'judge' | 'winner'
 
 // カード（デッキメンバー）
 export interface CardMember {
+  id?: string           // Supabase UUID（DB登録済みメンバーのみ持つ）
   name: string
   photo: string | null
   color: string

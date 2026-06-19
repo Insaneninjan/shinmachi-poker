@@ -9,6 +9,8 @@ import {
   amIJudge,
   dealHands,
   shuffleArray,
+  sortShowdown,
+  generateRoomCode,
 } from '../gameLogic'
 import type { GameRow, PlayerHand, CardMember, ShowdownEntry } from '../../types/game'
 
@@ -277,5 +279,102 @@ describe('amIJudge', () => {
 
   it('一致しなければ false', () => {
     expect(amIJudge(1, 2)).toBe(false)
+  })
+})
+
+// ======== sortShowdown ========
+
+describe('sortShowdown', () => {
+  it('playerIndex の昇順にソートされる', () => {
+    const showdown: ShowdownEntry[] = [
+      { playerIndex: 3, player: 'C', yaku: '役C', cards: [] },
+      { playerIndex: 1, player: 'A', yaku: '役A', cards: [] },
+      { playerIndex: 2, player: 'B', yaku: '役B', cards: [] },
+    ]
+    const sorted = sortShowdown(showdown)
+    expect(sorted.map(s => s.playerIndex)).toEqual([1, 2, 3])
+  })
+
+  it('元の配列を破壊しない（純粋関数）', () => {
+    const showdown: ShowdownEntry[] = [
+      { playerIndex: 2, player: 'B', yaku: '役B', cards: [] },
+      { playerIndex: 1, player: 'A', yaku: '役A', cards: [] },
+    ]
+    const original = [...showdown]
+    sortShowdown(showdown)
+    expect(showdown).toEqual(original)
+  })
+
+  it('空配列は空配列を返す', () => {
+    expect(sortShowdown([])).toEqual([])
+  })
+
+  it('1件の場合はそのまま返す', () => {
+    const showdown: ShowdownEntry[] = [
+      { playerIndex: 5, player: 'Z', yaku: '役', cards: [] },
+    ]
+    expect(sortShowdown(showdown)).toEqual(showdown)
+  })
+})
+
+// ======== generateRoomCode ========
+
+describe('generateRoomCode', () => {
+  it('4文字の文字列を返す', () => {
+    expect(generateRoomCode()).toHaveLength(4)
+  })
+
+  it('大文字英数字のみで構成される', () => {
+    // 紛らわしい文字（O, I, 1, 0）が除外されているかも確認
+    const code = generateRoomCode()
+    expect(code).toMatch(/^[A-Z0-9]+$/)
+    expect(code).not.toMatch(/[OI10]/)
+  })
+
+  it('毎回異なるコードが生成される（確率的テスト）', () => {
+    const codes = new Set(Array.from({ length: 50 }, () => generateRoomCode()))
+    // 50回生成して全部同じになる確率は天文学的に低い
+    expect(codes.size).toBeGreaterThan(1)
+  })
+})
+
+// ======== isAllChanged / isAllOpened の undefined ガード ========
+
+describe('isAllChanged（防御的テスト）', () => {
+  it('undefined を渡しても false を返す（Realtime差分payloadの安全性）', () => {
+    expect(isAllChanged(undefined as any)).toBe(false)
+  })
+})
+
+describe('isAllOpened（防御的テスト）', () => {
+  it('hands が undefined でも false を返す', () => {
+    expect(isAllOpened([], undefined as any)).toBe(false)
+  })
+
+  it('showdown が undefined でも false を返す', () => {
+    const hands = [makeHand(0), makeHand(1)]
+    expect(isAllOpened(undefined as any, hands)).toBe(false)
+  })
+
+  it('両方 undefined でも false を返す', () => {
+    expect(isAllOpened(undefined as any, undefined as any)).toBe(false)
+  })
+})
+
+// ======== applyCardChange 追加ケース ========
+
+describe('applyCardChange（追加ケース）', () => {
+  it('存在しない playerIndex を渡しても他プレイヤーの手札は変わらない', () => {
+    const hands = [makeHand(0), makeHand(1)]
+    const result = applyCardChange(hands, 99, [0], mockMembers, identityShuffleFn)
+    expect(result[0].cards).toEqual(hands[0].cards)
+    expect(result[1].cards).toEqual(hands[1].cards)
+  })
+
+  it('全カード捨てても5枚の手札が維持される（山札十分な場合）', () => {
+    // mockMembers は20枚 → hand0が5枚使用 → 残り15枚あれば補充可能
+    const hands = [makeHand(0), makeHand(1)]
+    const result = applyCardChange(hands, 0, [0, 1, 2, 3, 4], mockMembers, identityShuffleFn)
+    expect(result.find(h => h.index === 0)!.cards).toHaveLength(5)
   })
 })
