@@ -19,6 +19,23 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
 
   const code = chars.join('')
 
+  async function autoSearch(fullCode: string) {
+    if (fullCode.length !== 4) return
+    setLoading(true)
+    setError(null)
+    const { data, error: err } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', fullCode)
+      .single()
+    setLoading(false)
+    if (err || !data) {
+      setError(`ルームが見つかりませんでした。コード「${fullCode}」を確認してね。`)
+      return
+    }
+    setGame(data as GameRow)
+  }
+
   function handleChar(val: string, idx: number) {
     // スマホのIME確定前の文字列も考慮し、最後の1文字を大文字で取得
     const c = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(-1)
@@ -28,6 +45,11 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
     if (c && idx < 3) {
       // setStateの反映を待ってからfocusを移動（iOS Safari対策）
       setTimeout(() => inputRefs.current[idx + 1]?.focus(), 0)
+    }
+    // 4桁目が入力されたら自動検索
+    if (c && idx === 3) {
+      const fullCode = [...chars.slice(0, 3), c].join('')
+      if (fullCode.length === 4) autoSearch(fullCode)
     }
   }
 
@@ -44,7 +66,7 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
       }
     }
     // 4桁揃ったらEnterで検索
-    if (e.key === 'Enter' && code.length === 4) handleSearch()
+    if (e.key === 'Enter' && code.length === 4) autoSearch(code)
   }
 
   // Android の onCompositionEnd / onInput が onChange より先に来るケースへの対策
@@ -53,20 +75,7 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
   }
 
   async function handleSearch() {
-    if (code.length !== 4) return
-    setLoading(true)
-    setError(null)
-    const { data, error: err } = await supabase
-      .from('games')
-      .select('*')
-      .eq('id', code)
-      .single()
-    setLoading(false)
-    if (err || !data) {
-      setError(`ルームが見つかりませんでした。コード「${code}」を確認してね。`)
-      return
-    }
-    setGame(data as GameRow)
+    await autoSearch(code)
   }
 
   if (game) {

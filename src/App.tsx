@@ -33,14 +33,15 @@ export default function App() {
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${client.roomCode}` },
         (payload) => {
-          const updated = payload.new as GameRow
-          if (updated.phase === 'winner') {
-            setGame(updated)
+          // payload.new は差分のみのため、前の state と merge する
+          const diff = payload.new as Partial<GameRow>
+          if (diff.phase === 'winner') {
+            setGame(prev => ({ ...(prev ?? {} as GameRow), ...diff } as GameRow))
             navigate('showdown')
           }
-          if (updated.phase === 'change' && (screen === 'showdown')) {
-            setGame(updated)
-            const iAmNowJudge = amIJudge(client.myPlayerIndex, updated.judge_index)
+          if (diff.phase === 'change' && screen === 'showdown') {
+            setGame(prev => ({ ...(prev ?? {} as GameRow), ...diff } as GameRow))
+            const iAmNowJudge = amIJudge(client.myPlayerIndex, diff.judge_index ?? 0)
             setClient(prev => ({ ...prev, role: iAmNowJudge ? 'judge' : 'player' }))
             navigate(iAmNowJudge ? 'host' : 'game')
           }
@@ -95,7 +96,10 @@ export default function App() {
   }
 
   return (
-    <div className="transition-opacity duration-200" style={{ opacity: transitioning ? 0 : 1 }}>
+    <div
+      key={screen}
+      className={transitioning ? 'opacity-0 pointer-events-none' : 'animate-page-enter'}
+    >
       {screen === 'welcome' && <ScreenWelcome onStartGame={handleStartGame} onJoin={() => navigate('join')} />}
       {screen === 'join' && <ScreenJoin onJoinAsJudge={handleJoinAsJudge} onJoinAsPlayer={handleJoinAsPlayer} onBack={() => navigate('welcome')} />}
       {screen === 'host' && client.roomCode && game && (
