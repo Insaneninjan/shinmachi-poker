@@ -10,15 +10,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANTS: Record<Variant, string> = {
   gold: [
-    'bg-gradient-to-br from-[#c9a84c] via-[#a07830] to-[#c9a84c]',
-    'text-[#2a1a00] font-bold',
-    'shadow-[0_4px_15px_rgba(201,168,76,0.4)]',
-    'hover:brightness-110',
+    'relative overflow-hidden',
+    'bg-gradient-to-br from-[#FFE135] via-[#c9a84c] to-[#e8a020]',
+    'text-[#1a0a00] font-bold',
+    'shadow-[0_4px_20px_rgba(255,225,53,0.5),0_0_0_2px_rgba(201,168,76,0.6)]',
+    'hover:brightness-110 btn-shine',
   ].join(' '),
   outline: [
-    'bg-white/[0.06] text-white/85',
-    'border border-[rgba(201,168,76,0.4)]',
-    'hover:bg-white/[0.12]',
+    'bg-black/30 text-[#FFE135]',
+    'border-2 border-[rgba(255,225,53,0.5)]',
+    'hover:bg-black/50 hover:border-[#FFE135]',
   ].join(' '),
   ghost: [
     'bg-transparent text-white/50',

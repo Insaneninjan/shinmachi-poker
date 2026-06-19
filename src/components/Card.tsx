@@ -7,14 +7,7 @@ interface CardProps {
   selected?: boolean
   discarding?: boolean
   onClick?: () => void
-  dealIndex?: number  // アニメーション遅延用
-}
-
-const SUIT_COLOR: Record<string, string> = {
-  '♥': '#c0392b',
-  '♦': '#c0392b',
-  '♠': '#1a1a2e',
-  '♣': '#1a1a2e',
+  dealIndex?: number
 }
 
 export function Card({
@@ -25,8 +18,6 @@ export function Card({
   onClick,
   dealIndex = 0,
 }: CardProps) {
-  const suit = card.suit ?? '♠'
-  const suitColor = SUIT_COLOR[suit] ?? '#1a1a2e'
   const delay = `${dealIndex * 0.1}s`
 
   return (
@@ -43,70 +34,72 @@ export function Card({
     >
       <div
         className={cn(
-          // カード本体
-          'relative w-full h-full rounded-[10px] overflow-hidden',
-          'bg-[#fffef8] border border-white/90',
-          'flex flex-col items-center justify-center',
-          size === 'sm' ? 'p-1' : 'p-2',
-          // 影
+          'relative w-full h-full rounded-[8px] overflow-hidden flex flex-col',
+          // 金縁フレーム（TV番組風）
           selected
-            ? 'shadow-[0_8px_24px_rgba(201,168,76,0.5),0_0_0_2px_#c9a84c]'
+            ? 'shadow-[0_8px_24px_rgba(255,225,53,0.7),0_0_0_3px_#FFE135,0_0_0_5px_#c9a84c]'
             : discarding
-            ? 'shadow-[0_8px_24px_rgba(192,57,43,0.6),0_0_0_2px_#e24b4a]'
-            : 'shadow-[0_4px_12px_rgba(0,0,0,0.4)]',
+            ? 'shadow-[0_8px_24px_rgba(220,50,50,0.7),0_0_0_3px_#e24b4a,0_0_0_5px_#8b1a1a]'
+            : 'shadow-[0_4px_16px_rgba(0,0,0,0.6),0_0_0_2px_#c9a84c,0_0_0_4px_rgba(201,168,76,0.3)]',
         )}
+        style={{
+          background: 'linear-gradient(180deg, #fffef5 0%, #f5f0e0 100%)',
+        }}
       >
-        {/* 内枠線 */}
-        <div className="absolute inset-[3px] border border-black/[0.08] rounded-[7px] pointer-events-none" />
-
-        {/* 左上スート */}
-        <span
-          className="absolute top-[3px] left-[4px] text-[9px] opacity-25 leading-none"
-          style={{ color: suitColor }}
-        >
-          {suit}
-        </span>
-
-        {/* 顔写真 or イニシャル */}
+        {/* 金縁装飾ライン（上） */}
         <div
-          className={cn(
-            'rounded-full overflow-hidden flex items-center justify-center',
-            'font-bold text-white flex-shrink-0 mb-1',
-            size === 'sm'
-              ? 'w-[85%] aspect-square text-[11px]'
-              : 'w-[88%] aspect-square text-[22px]',
-          )}
-          style={{ background: card.color, boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
-        >
-          {card.photo ? (
-            <img src={card.photo} alt={card.name} className="w-full h-full object-cover" />
-          ) : (
-            card.name.slice(0, 1)
-          )}
+          className="h-[3px] w-full flex-shrink-0"
+          style={{ background: 'linear-gradient(90deg, #c9a84c, #FFE135, #c9a84c)' }}
+        />
+
+        {/* 写真エリア（カードの大部分を占める） */}
+        <div className="flex-1 relative overflow-hidden">
+          <div
+            className={cn(
+              'absolute inset-[3px] rounded-[4px] overflow-hidden',
+              'flex items-center justify-center font-bold text-white',
+              size === 'sm' ? 'text-[11px]' : 'text-[20px]',
+            )}
+            style={{ background: card.color }}
+          >
+            {card.photo ? (
+              <img src={card.photo} alt={card.name} className="w-full h-full object-cover" />
+            ) : (
+              card.name.slice(0, 1)
+            )}
+          </div>
         </div>
 
-        {/* 名前 */}
+        {/* 青いネームラベル（番組風） */}
         <div
-          className={cn(
-            'text-center font-bold leading-tight text-[#333]',
-            size === 'sm' ? 'text-[7px]' : 'text-[9px]',
-          )}
+          className="flex-shrink-0 flex items-center justify-center"
+          style={{
+            background: 'linear-gradient(180deg, #1a3a9c 0%, #0d2060 100%)',
+            padding: size === 'sm' ? '2px 2px' : '4px 4px',
+            minHeight: size === 'sm' ? '18px' : '28px',
+          }}
         >
-          {card.name}
+          <span
+            className={cn(
+              'text-white font-bold leading-tight text-center w-full truncate',
+              size === 'sm' ? 'text-[7px] px-1' : 'text-[10px] px-2',
+            )}
+            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+          >
+            {card.name}
+          </span>
         </div>
 
-        {/* 右下スート（回転） */}
-        <span
-          className="absolute bottom-[3px] right-[4px] text-[9px] opacity-25 leading-none rotate-180"
-          style={{ color: suitColor }}
-        >
-          {suit}
-        </span>
+        {/* 金縁装飾ライン（下） */}
+        <div
+          className="h-[3px] w-full flex-shrink-0"
+          style={{ background: 'linear-gradient(90deg, #c9a84c, #FFE135, #c9a84c)' }}
+        />
 
         {/* 捨てる×マーク */}
         {discarding && (
-          <div className="absolute inset-0 flex items-center justify-center bg-red-600/35 rounded-[10px]">
-            <span className="text-white text-2xl font-bold">✕</span>
+          <div className="absolute inset-0 flex items-center justify-center bg-red-600/40 rounded-[8px]">
+            <span className="text-white text-2xl font-bold drop-shadow-lg">✕</span>
           </div>
         )}
       </div>
