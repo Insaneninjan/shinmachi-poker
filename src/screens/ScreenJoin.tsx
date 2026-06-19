@@ -110,12 +110,12 @@ export function ScreenJoin({ onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoin
         {chars.map((c, i) => (
           <input
             key={i}
-            ref={(el: HTMLInputElement | null): void => { inputRefs.current[i] =
+            ref={(el: HTMLInputElement | null) => { inputRefs.current[i] = el }}
             maxLength={1}
             value={c}
             inputMode="text"
             autoComplete="off"
-            onChange={e => handleChar(e.target.value, i)}
+            onChange={e => handleChar(e.currentTarget.value, i)}
             onKeyDown={e => handleKeyDown(e, i)}
             className="w-[60px] h-[72px] text-center bg-black/40 border-2 border-[rgba(201,168,76,0.3)] rounded-[10px] text-[32px] font-bold font-playfair text-[#c9a84c] outline-none focus:border-[#c9a84c] focus:shadow-[0_0_15px_rgba(201,168,76,0.2)] transition-all"
           />
