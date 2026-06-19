@@ -56,7 +56,7 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
   const [loading, setLoading] = useState(false)
   const [avatarsAvailable, setAvatarsAvailable] = useState<boolean | null>(null)
   const [avatarsError, setAvatarsError] = useState<string | null>(null)
-  const [avatarsList, setAvatarsList] = useState<Array<{ name?: string; id?: string; updated_at?: string }> | null>(null)
+  const [avatarsList, setAvatarsList] = useState<Array<{ name?: string; id?: string | null; updated_at?: string | null }> | null>(null)
   const [avatarsListLoading, setAvatarsListLoading] = useState(false)
   const [showMembersDebug, setShowMembersDebug] = useState(false)
 
@@ -139,40 +139,7 @@ export function ScreenWelcome({ onStartGame, onJoin }: ScreenWelcomeProps) {
     return () => { mounted = false }
   }, [avatarsAvailable])
 
-  // manual retry helper for debugging
-  async function retryFetchMembers() {
-    try {
-      setAvatarsListLoading(true)
-      await (async () => {
-        // reuse effect logic by calling fetchMembers via creating a new function instance
-        const { data, error } = await supabase
-          .from('members')
-          .select('name,color,suit,avatar_path')
-          .order('created_at', { ascending: true })
-        if (error) { console.warn('Failed to fetch members from Supabase:', error.message); return }
-        const MemberRow = (r: any) => r
-        const paths = (data as any[]).map(r => r.avatar_path).filter(Boolean) as string[]
-        const ttl = 3600
-        const signedPromises = paths.map(async (p: string) => {
-          try {
-            if (import.meta.env.VITE_SIGNED_URL_PROXY) {
-              const url = await getSignedUrlFromProxy(import.meta.env.VITE_SIGNED_URL_PROXY, p)
-              return { data: { signedUrl: url }, error: null }
-            }
-            const res = await supabase.storage.from('avatars').createSignedUrl(p, ttl)
-            return res
-          } catch (e) {
-            return { data: null, error: e }
-          }
-        })
-        const signedResults = await Promise.all(signedPromises)
-        console.debug('retry signed-url: paths=', paths)
-        console.debug('retry signed-url: signedResults=', signedResults)
-      })()
-    } finally {
-      setAvatarsListLoading(false)
-    }
-  }
+  // (debug helper removed) Use the component's effect to refresh members instead
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
