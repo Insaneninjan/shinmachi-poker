@@ -19,12 +19,19 @@ export interface PlayerHand {
   opened: boolean     // オープン完了フラグ
 }
 
+// 役の内訳グループ（ツーペアの「ペア①/ペア②」、フルハウスの「スリー/ペア」など）
+export interface CardGroup {
+  label: string
+  cards: CardMember[]
+}
+
 // ショーダウンエントリ（オープン時に提出）
 export interface ShowdownEntry {
   playerIndex: number
   player: string
   yaku: string          // 役名（大喜利テキスト）
-  cards: CardMember[]   // 出したカード
+  cards: CardMember[]   // 出したカード（後方互換用・全枚数）
+  groups?: CardGroup[]  // 役の内訳（ツーペア・フルハウス・ストレート等）
 }
 
 // Supabase games テーブルの行

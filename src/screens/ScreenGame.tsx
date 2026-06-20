@@ -7,7 +7,7 @@ import {
   GoldDivider, BadgeGold,
 } from '../components/Layout'
 import { applyCardChange, sortShowdown } from '../utils/gameLogic'
-import type { CardMember, GameRow, PlayerHand } from '../types/game'
+import type { CardMember, CardGroup, GameRow, PlayerHand } from '../types/game'
 
 interface ScreenGameProps {
   roomCode: string
@@ -36,10 +36,21 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
   const [changeSubmitted, setChangeSubmitted] = useState(myHand?.changed ?? false)
   const [openSubmitted, setOpenSubmitted] = useState(false)
 
+  // ─── 役の内訳グループ割り当て ───
+  // cardGroups: 手札index → グループラベル（ツーペア・フルハウス用）
+  const [cardGroups, setCardGroups] = useState<Record<number, string>>({})
+  const [activeGroup, setActiveGroup] = useState<string | null>(null)
+  // cardOrder: 手札indexの配列（ストレートの順番用、先頭=1位）
+  const [cardOrder, setCardOrder] = useState<number[]>([])
+
+  // グループ定義（役の種類 → グループ構造）
+  const GROUP_DEFS: Record<string, { label: string; count: number; color: string }[]> = {
+    'ツーペア':   [{ label: 'ペア①', count: 2, color: '#534AB7' }, { label: 'ペア②', count: 2, color: '#993C1D' }],
+    'フルハウス': [{ label: 'スリー', count: 3, color: '#534AB7' }, { label: 'ペア',  count: 2, color: '#993C1D' }],
+  }
+  const STRAIGHT_TYPES = ['ストレート', 'ストレートフラッシュ']
+
   // フェーズが切り替わったらリセット
-  // ※ myHand・showdown・myPlayerIndex を deps に含めると
-  //   Realtime更新の度にリセットされるため phase のみを監視する。
-  //   ただし参照する値はレンダー時の最新値を使う（クロージャ問題なし）。
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (phase === 'change') {
@@ -50,10 +61,20 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
       setOpenSelected([0, 1, 2, 3, 4])
       setYakuType('')
       setYakuText('')
+      setCardGroups({})
+      setActiveGroup(null)
+      setCardOrder([])
       const myEntry = showdown.find(s => s.playerIndex === myPlayerIndex)
       setOpenSubmitted(!!myEntry)
     }
-  }, [phase]) // phase のみ意図的に監視（コメント参照）
+  }, [phase]) // phase のみ意図的に監視
+
+  // 役の種類が変わったらグループ割り当てをリセット
+  useEffect(() => {
+    setCardGroups({})
+    setActiveGroup(null)
+    setCardOrder([])
+  }, [yakuType])
 
   const PHASE_INFO: Record<string, { name: string; desc: string }> = {
     change: { name: 'チェンジフェーズ', desc: '捨てるカードを選んでチェンジしよう' },
@@ -84,13 +105,38 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
     if (!yakuCombined) { alert('役を選択 or 入力してね'); return }
     if (openSelected.length === 0) { alert('出すカードを1枚以上選んでね'); return }
     setSubmitting(true)
+
+    // 役の内訳グループを構築
+    let groups: CardGroup[] | undefined
+    const groupDefs = GROUP_DEFS[yakuType]
+    if (groupDefs) {
+      const built = groupDefs.map(g => ({
+        label: g.label,
+        cards: Object.entries(cardGroups)
+          .filter(([, label]) => label === g.label)
+          .map(([idx]) => myHand.cards[Number(idx)]),
+      })).filter(g => g.cards.length > 0)
+      if (built.length > 0) groups = built
+    } else if (STRAIGHT_TYPES.includes(yakuType) && cardOrder.length > 0) {
+      groups = [{ label: 'ストレート', cards: cardOrder.map(i => myHand.cards[i]) }]
+    }
+
+    // ストレートは cardOrder を優先して cards 配列の順番を決める
+    const submittedCards = (STRAIGHT_TYPES.includes(yakuType) && cardOrder.length > 0)
+      ? [
+          ...cardOrder.map(i => myHand.cards[i]),
+          ...openSelected.filter(i => !cardOrder.includes(i)).map(i => myHand.cards[i]),
+        ]
+      : openSelected.map(i => myHand.cards[i])
+
     const { data } = await supabase.from('games').select('showdown').eq('id', roomCode).single()
     const currentSD = (data?.showdown ?? showdown).filter((s: any) => s.playerIndex !== myPlayerIndex)
     currentSD.push({
       playerIndex: myPlayerIndex,
       player: myHand.player,
       yaku: yakuCombined,
-      cards: openSelected.map(i => myHand.cards[i]),
+      cards: submittedCards,
+      ...(groups ? { groups } : {}),
     })
     await supabase.from('games').update({ showdown: currentSD }).eq('id', roomCode)
     setOpenSubmitted(true)
@@ -104,9 +150,13 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
   }
 
   function toggleOpen(i: number) {
-    setOpenSelected(prev =>
-      prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
-    )
+    const wasSelected = openSelected.includes(i)
+    setOpenSelected(prev => wasSelected ? prev.filter(x => x !== i) : [...prev, i])
+    if (wasSelected) {
+      // カードが外されたらグループ割り当てとストレート順番からも除去
+      setCardGroups(prev => { const n = { ...prev }; delete n[i]; return n })
+      setCardOrder(prev => prev.filter(ci => ci !== i))
+    }
   }
 
   if (!myHand) return (
@@ -182,9 +232,22 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
               return myEntry ? (
                 <>
                   <div className="font-playfair text-[20px] text-[#c9a84c] text-center mb-4">「{myEntry.yaku}」</div>
-                  <div className="grid grid-cols-5 gap-2 mb-4">
-                    {myEntry.cards.map((c, i) => <Card key={i} card={c} size="lg" selected dealIndex={i} />)}
-                  </div>
+                  {myEntry.groups && myEntry.groups.length > 0 ? (
+                    <div className="space-y-3 mb-4">
+                      {myEntry.groups.map((g, gi) => (
+                        <div key={gi}>
+                          <div className="text-[10px] text-white/40 tracking-wider text-center mb-1">{g.label}</div>
+                          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${g.cards.length}, 1fr)` }}>
+                            {g.cards.map((c, ci) => <Card key={ci} card={c} size="lg" selected dealIndex={ci} />)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-5 gap-2 mb-4">
+                      {myEntry.cards.map((c, i) => <Card key={i} card={c} size="lg" selected dealIndex={i} />)}
+                    </div>
+                  )}
                 </>
               ) : null
             })()}
@@ -248,6 +311,147 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
                 />
               </div>
             </div>
+
+            {/* ─── ツーペア / フルハウス：グループ割り当てUI ─── */}
+            {GROUP_DEFS[yakuType] && openSelected.length > 0 && (
+              <div className="bg-black/30 border border-[rgba(201,168,76,0.2)] rounded-[14px] p-4 mb-4">
+                <div className="text-[11px] text-white/40 tracking-widest mb-3">
+                  役の内訳を振り分けよう
+                </div>
+                {/* グループ選択ボタン */}
+                <div className="flex gap-2 mb-3">
+                  {GROUP_DEFS[yakuType].map(g => {
+                    const assigned = Object.values(cardGroups).filter(v => v === g.label).length
+                    const full = assigned >= g.count
+                    const isActive = activeGroup === g.label
+                    return (
+                      <button
+                        key={g.label}
+                        onClick={() => setActiveGroup(isActive ? null : g.label)}
+                        className="flex-1 py-2 rounded-lg text-[12px] font-bold border-2 transition-all"
+                        style={{
+                          borderColor: isActive ? '#c9a84c' : g.color + '50',
+                          background: isActive ? 'rgba(201,168,76,0.15)' : 'rgba(0,0,0,0.25)',
+                          color: isActive ? '#c9a84c' : full ? '#a0a0a0' : g.color,
+                        }}
+                      >
+                        {g.label}
+                        <span className="ml-1 opacity-70 text-[10px]">({assigned}/{g.count})</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {/* カード割り当てグリッド */}
+                {activeGroup ? (
+                  <>
+                    <p className="text-[11px] text-white/30 text-center mb-2">
+                      カードをタップして「{activeGroup}」に振り分け
+                    </p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {openSelected.map((cardIdx, i) => {
+                        const group = cardGroups[cardIdx]
+                        const gDef = GROUP_DEFS[yakuType]?.find(g => g.label === group)
+                        const isInActive = group === activeGroup
+                        return (
+                          <div
+                            key={i}
+                            className="relative cursor-pointer"
+                            onClick={() => {
+                              setCardGroups(prev => {
+                                const next = { ...prev }
+                                if (next[cardIdx] === activeGroup) {
+                                  delete next[cardIdx]
+                                } else {
+                                  next[cardIdx] = activeGroup!
+                                }
+                                return next
+                              })
+                            }}
+                          >
+                            <Card
+                              card={myHand.cards[cardIdx]}
+                              size="lg"
+                              selected={isInActive}
+                              deselected={!!group && !isInActive}
+                              dealIndex={i}
+                            />
+                            {group && (
+                              <div
+                                className="absolute top-0.5 left-0.5 text-[9px] font-bold text-white px-1 py-0.5 rounded leading-none pointer-events-none"
+                                style={{ background: gDef?.color ?? '#534AB7' }}
+                              >
+                                {group === 'スリー' ? '3' : group === 'ペア' ? 'P' : group.slice(-1)}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[12px] text-white/30 text-center py-2">
+                    上のボタンを押してカードを振り分けよう
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ─── ストレート / ストレートフラッシュ：順番UIー ─── */}
+            {STRAIGHT_TYPES.includes(yakuType) && openSelected.length > 0 && (
+              <div className="bg-black/30 border border-[rgba(201,168,76,0.2)] rounded-[14px] p-4 mb-4">
+                <div className="text-[11px] text-white/40 tracking-widest mb-3">
+                  順番に並べよう（タップで追加・外す）
+                </div>
+                {/* 順番スロット */}
+                <div className="flex gap-1 mb-3">
+                  {openSelected.map((_, pos) => {
+                    const cardIdx = cardOrder[pos]
+                    return (
+                      <div key={pos} className="flex-1 flex flex-col items-center gap-0.5 min-w-0">
+                        <div className="text-[10px] text-[#c9a84c] font-bold leading-none mb-0.5">{pos + 1}</div>
+                        {cardIdx !== undefined ? (
+                          <div
+                            className="cursor-pointer w-full"
+                            onClick={() => setCardOrder(prev => prev.filter(i => i !== cardIdx))}
+                          >
+                            <Card card={myHand.cards[cardIdx]} size="sm" selected dealIndex={pos} />
+                          </div>
+                        ) : (
+                          <div
+                            className="aspect-[2/3] w-full border-2 border-dashed border-white/15 rounded-lg flex items-center justify-center text-white/20"
+                            style={{ fontSize: '14px' }}
+                          >
+                            ?
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                {/* 未配置カード */}
+                {openSelected.filter(i => !cardOrder.includes(i)).length > 0 ? (
+                  <>
+                    <p className="text-[11px] text-white/30 text-center mb-2">↓ タップして順番に追加</p>
+                    <div className="grid grid-cols-5 gap-1">
+                      {openSelected.filter(i => !cardOrder.includes(i)).map((cardIdx, pi) => (
+                        <div
+                          key={cardIdx}
+                          className="cursor-pointer"
+                          onClick={() => setCardOrder(prev => [...prev, cardIdx])}
+                        >
+                          <Card card={myHand.cards[cardIdx]} size="sm" dealIndex={pi} />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-[#c9a84c] text-center opacity-70">
+                    ✓ 順番が設定されました！スロットのカードをタップすると外せます
+                  </p>
+                )}
+              </div>
+            )}
+
             <Button variant="gold" onClick={submitOpen} disabled={submitting}>
               {submitting ? (
                 <>
@@ -284,9 +488,22 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
                 <div className="font-playfair text-[16px] text-[#c9a84c] text-center mb-2 py-2 bg-[rgba(201,168,76,0.08)] rounded-lg">
                   「{s.yaku}」
                 </div>
-                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${ncols}, 1fr)` }}>
-                  {s.cards.map((c, ci) => <Card key={ci} card={c} size="lg" dealIndex={ci} />)}
-                </div>
+                {s.groups && s.groups.length > 0 ? (
+                  <div className="space-y-2">
+                    {s.groups.map((g, gi) => (
+                      <div key={gi}>
+                        <div className="text-[10px] text-white/35 tracking-wider text-center mb-1">{g.label}</div>
+                        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${g.cards.length}, 1fr)` }}>
+                          {g.cards.map((c, ci) => <Card key={ci} card={c} size="lg" dealIndex={ci} />)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${ncols}, 1fr)` }}>
+                    {s.cards.map((c, ci) => <Card key={ci} card={c} size="lg" dealIndex={ci} />)}
+                  </div>
+                )}
               </div>
             )
           })}
