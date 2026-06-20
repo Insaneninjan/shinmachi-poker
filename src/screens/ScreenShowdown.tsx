@@ -71,9 +71,22 @@ export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenSh
             <div className="font-playfair text-[17px] text-[#c9a84c] text-center mb-3 px-2 py-2 bg-[rgba(201,168,76,0.08)] rounded-lg">
               「{s.yaku}」
             </div>
-            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${ncols}, 1fr)` }}>
-              {s.cards.map((c, ci) => <Card key={ci} card={c} size="lg" dealIndex={ci} />)}
-            </div>
+            {s.groups && s.groups.length > 0 ? (
+              <div className="space-y-2">
+                {s.groups.map((g, gi) => (
+                  <div key={gi}>
+                    <div className="text-[10px] text-white/35 tracking-wider text-center mb-1">{g.label}</div>
+                    <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${g.cards.length}, 1fr)` }}>
+                      {g.cards.map((c, ci) => <Card key={ci} card={c} size="lg" dealIndex={ci} />)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${ncols}, 1fr)` }}>
+                {s.cards.map((c, ci) => <Card key={ci} card={c} size="lg" dealIndex={ci} />)}
+              </div>
+            )}
           </div>
         )
       })}

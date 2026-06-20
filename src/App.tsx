@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './hooks/useSupabase'
-import { shuffleArray, generateRoomCode, amIJudge } from './utils/gameLogic'
+import { generateRoomCode, amIJudge } from './utils/gameLogic'
 import { ScreenWelcome } from './screens/ScreenWelcome'
 import { ScreenJoin } from './screens/ScreenJoin'
 import { ScreenLobby } from './screens/ScreenLobby'
