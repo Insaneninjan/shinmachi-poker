@@ -45,8 +45,21 @@ export default function App() {
           const safeShowdown = Array.isArray(diff.showdown) ? diff.showdown : undefined
           const safeDiff = safeShowdown !== undefined ? { ...diff, showdown: safeShowdown } : diff
           if (safeDiff.phase === 'winner') {
-            setGame(prev => ({ ...(prev ?? {} as GameRow), ...safeDiff } as GameRow))
-            navigate('showdown')
+            // payload.new は差分のみのケースがあり showdown が欠落する。
+            // DBから完全な行を取得してから遷移する。
+            supabase
+              .from('games')
+              .select('*')
+              .eq('id', client.roomCode!)
+              .single()
+              .then(({ data }) => {
+                if (data) {
+                  setGame(data as GameRow)
+                } else {
+                  setGame(prev => ({ ...(prev ?? {} as GameRow), ...safeDiff } as GameRow))
+                }
+                navigate('showdown')
+              })
           }
           if (safeDiff.phase === 'change' && screen === 'showdown') {
             setGame(prev => {

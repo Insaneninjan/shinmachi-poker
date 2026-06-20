@@ -10,6 +10,7 @@ interface ScreenGateProps {
 export function ScreenGate({ onUnlock }: ScreenGateProps) {
   const [value, setValue] = useState('')
   const [error, setError] = useState(false)
+  const [isComposing, setIsComposing] = useState(false)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,8 +46,19 @@ export function ScreenGate({ onUnlock }: ScreenGateProps) {
           <input
             type="password"
             value={value}
-            onChange={e => { setValue(e.target.value); setError(false) }}
+            onChange={e => {
+              if (!isComposing) { setValue(e.target.value); setError(false) }
+            }}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={e => {
+              setIsComposing(false)
+              setValue(e.currentTarget.value)
+              setError(false)
+            }}
             placeholder="合言葉を入力"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             autoFocus
             className="w-full px-4 py-4 mb-3 rounded-[10px] text-[16px] text-[#fdf6e3] bg-black/50 outline-none placeholder-white/20 tracking-widest text-center"
             style={{

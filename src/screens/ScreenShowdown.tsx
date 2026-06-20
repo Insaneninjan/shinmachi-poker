@@ -3,7 +3,7 @@ import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { GoldDivider } from '../components/Layout'
 import type { GameRow, CardMember, ShowdownEntry } from '../types/game'
-import { useNextRound, supabase } from '../hooks/useSupabase'
+import { useNextRound } from '../hooks/useSupabase'
 
 // ─── 進行ドット ───────────────────────────────────────────────────
 function ProgressDots({ total, current }: { total: number; current: number }) {
@@ -39,14 +39,13 @@ interface PlayerRevealPanelProps {
   entry: ShowdownEntry
   isWinner: boolean
   isLastStep: boolean
-  isJudge: boolean
   total: number
   current: number
   onAdvance: () => void
 }
 
 function PlayerRevealPanel({
-  entry, isWinner, isLastStep, isJudge, total, current, onAdvance,
+  entry, isWinner, isLastStep, total, current, onAdvance,
 }: PlayerRevealPanelProps) {
   const [phase, setPhase] = useState<RevealPhase>('content')
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -175,19 +174,9 @@ function PlayerRevealPanel({
       {/* ④ ボタンエリア（1350ms後にマウント） */}
       {phase === 'done' && (
         <div className="max-w-[480px] mx-auto px-4 pb-10 pt-6 w-full mt-auto animate-fade-up">
-          {isJudge ? (
-            <Button variant="gold" onClick={onAdvance}>
-              {isLastStep ? '👑 勝者発表！' : '次のプレイヤーへ →'}
-            </Button>
-          ) : (
-            <div className="flex items-center justify-center gap-2 text-white/30 text-[13px]">
-              <span
-                className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white/60 animate-spin"
-                style={{ animationDuration: '1.2s' }}
-              />
-              ジャッジが次を選択中...
-            </div>
-          )}
+          <Button variant="gold" onClick={onAdvance}>
+            {isLastStep ? '👑 勝者発表！' : '次のプレイヤーへ →'}
+          </Button>
         </div>
       )}
     </div>
@@ -210,38 +199,14 @@ export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenSh
   const N = entries.length
 
   // -1 = イントロ / 0..N-1 = プレイヤー公開 / N = 勝者発表
+  // 各ユーザーが独自のペースで進めるためローカル state のみで管理
   const [step, setStep] = useState(-1)
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const nextJudgeIndex = (game.judge_index + 1) % game.player_names.length
   const nextJudgeName  = game.player_names[nextJudgeIndex]
 
-  // ─── Supabase broadcast で全クライアントの step を同期 ───────────
-  useEffect(() => {
-    const channel = supabase.channel(`showdown:${game.id}`)
-    channelRef.current = channel
-
-    channel
-      .on('broadcast', { event: 'step' }, ({ payload }: { payload: { step: number } }) => {
-        setStep(payload.step)
-      })
-      .subscribe()
-
-    return () => {
-      channel.unsubscribe()
-      channelRef.current = null
-    }
-  }, [game.id])
-
-  // ─── ジャッジが進めるとき：自分の step 更新 + 全員にブロードキャスト ──
-  async function advance() {
-    const newStep = step + 1
-    setStep(newStep)
-    await channelRef.current?.send({
-      type: 'broadcast',
-      event: 'step',
-      payload: { step: newStep },
-    })
+  function advance() {
+    setStep(prev => prev + 1)
   }
 
   async function handleNextRound() {
@@ -279,17 +244,7 @@ export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenSh
           <p className="text-[15px] text-white/40 mb-1 tracking-[0.12em]">{N} 人のカードが揃いました</p>
           <p className="text-[12px] text-white/22 mb-12">1人ずつ順番に公開します</p>
 
-          {isJudge ? (
-            <Button variant="gold" onClick={advance}>▶ 公開スタート！</Button>
-          ) : (
-            <div className="flex flex-col items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full border-2 border-[rgba(201,168,76,0.3)] border-t-[#c9a84c] animate-spin"
-                style={{ animationDuration: '1.4s' }}
-              />
-              <p className="text-[13px] text-white/35">ジャッジが公開を始めるまで待ってください</p>
-            </div>
-          )}
+          <Button variant="gold" onClick={advance}>▶ 公開スタート！</Button>
         </div>
       </div>
     )
@@ -306,7 +261,6 @@ export function ScreenShowdown({ game, isJudge, members, onNextRound }: ScreenSh
         entry={entries[step]}
         isWinner={entries[step].player === game.winner}
         isLastStep={step === N - 1}
-        isJudge={isJudge}
         total={N}
         current={step}
         onAdvance={advance}
