@@ -88,6 +88,54 @@
 }
 .animate-slide-down { animation: slide-down 0.25s ease both; }
 
+/* ショーダウン待機：アバターの脈動グロー */
+@keyframes standby-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(201,168,76,0.15), 0 0 24px rgba(201,168,76,0.08); }
+  50%       { box-shadow: 0 0 0 12px rgba(201,168,76,0.32), 0 0 60px rgba(201,168,76,0.28); }
+}
+.animate-standby-pulse {
+  animation: standby-pulse 1.8s ease-in-out infinite;
+}
+
+/* ショーダウン公開：アバタースポットライト登場 */
+@keyframes reveal-spotlight {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-8deg); }
+  55%  { transform: scale(1.14) rotate(2deg); }
+  78%  { transform: scale(0.95) rotate(0deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.animate-reveal-spotlight {
+  animation: reveal-spotlight 0.7s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+/* ショーダウン公開：役テキスト浮上 */
+@keyframes yaku-appear {
+  0%   { opacity: 0; transform: translateY(24px) scale(0.86); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-yaku-appear {
+  animation: yaku-appear 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 勝者スクリーン：ゴールドグロー呼吸 */
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%       { opacity: 0.32; transform: scale(1.14); }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* 公開ボタン：アテンション誘導 */
+@keyframes reveal-btn-appear {
+  0%   { opacity: 0; transform: scale(0.85) translateY(12px); }
+  70%  { transform: scale(1.04) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-reveal-btn {
+  animation: reveal-btn-appear 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
 /* スクロールバー */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.25); border-radius: 2px; }

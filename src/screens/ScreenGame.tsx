@@ -6,7 +6,7 @@ import {
   Layout, PhaseBanner, SuccessPanel, SectionLabel,
   GoldDivider, BadgeGold,
 } from '../components/Layout'
-import { applyCardChange, sortShowdown } from '../utils/gameLogic'
+import { applyCardChange } from '../utils/gameLogic'
 import type { CardMember, CardGroup, GameRow, PlayerHand } from '../types/game'
 
 interface ScreenGameProps {
@@ -466,48 +466,16 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
 
       {/* 判定待ち */}
       {phase === 'judge' && (
-        <>
-          <div className="bg-[rgba(201,168,76,0.1)] border border-[rgba(201,168,76,0.3)] rounded-[10px] px-4 py-3 text-[13px] text-[#e8cc80] mb-4 text-center">
-            ⚖️ ジャッジが勝者を決定中...<br />結果を待ってね
+        <div className="flex flex-col items-center justify-center py-16 gap-5">
+          <div
+            className="w-12 h-12 rounded-full border-2 border-[rgba(201,168,76,0.3)] border-t-[#c9a84c] animate-spin"
+            style={{ animationDuration: '1.4s' }}
+          />
+          <div className="text-center">
+            <p className="text-[16px] text-[#e8cc80] font-bold mb-1">⚖️ ジャッジが勝者を決定中...</p>
+            <p className="text-[13px] text-white/35">もうすぐショーダウンが始まります</p>
           </div>
-          <SectionLabel>全員の役</SectionLabel>
-          {sortShowdown(showdown).map(s => {
-            const ncols = Math.min(s.cards.length, 5)
-            return (
-              <div key={s.playerIndex} className="bg-black/35 border border-[rgba(201,168,76,0.25)] rounded-[16px] p-4 mb-3 overflow-hidden animate-flip-in">
-                <div className="flex items-center gap-2 mb-2">
-                  <div
-                    className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white overflow-hidden"
-                    style={{ background: s.cards[0]?.color ?? '#534AB7' }}
-                  >
-                    {s.cards[0]?.photo ? <img src={s.cards[0].photo} className="w-full h-full object-cover" alt="" /> : s.player.slice(0, 1)}
-                  </div>
-                  <span className="text-[14px] font-bold text-[#fdf6e3] flex-1">{s.player}</span>
-                  <BadgeGold>P{s.playerIndex + 1}</BadgeGold>
-                </div>
-                <div className="font-playfair text-[16px] text-[#c9a84c] text-center mb-2 py-2 bg-[rgba(201,168,76,0.08)] rounded-lg">
-                  「{s.yaku}」
-                </div>
-                {s.groups && s.groups.length > 0 ? (
-                  <div className="space-y-2">
-                    {s.groups.map((g, gi) => (
-                      <div key={gi}>
-                        <div className="text-[10px] text-white/35 tracking-wider text-center mb-1">{g.label}</div>
-                        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${g.cards.length}, 1fr)` }}>
-                          {g.cards.map((c, ci) => <Card key={ci} card={c} size="lg" dealIndex={ci} />)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${ncols}, 1fr)` }}>
-                    {s.cards.map((c, ci) => <Card key={ci} card={c} size="lg" dealIndex={ci} />)}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </>
+        </div>
       )}
 
       <GoldDivider />
