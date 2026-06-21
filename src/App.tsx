@@ -9,7 +9,7 @@ import { ScreenGame } from './screens/ScreenGame'
 import { ScreenShowdown } from './screens/ScreenShowdown'
 import { ScreenGate } from './screens/ScreenGate'
 import { ScreenObserverWait } from './screens/ScreenObserverWait'
-import type { GameRow, CardMember, ClientState } from './types/game'
+import type { GameRow, CardMember, ClientState, MyRole } from './types/game'
 
 type AppScreen = 'welcome' | 'join' | 'lobby' | 'host' | 'game' | 'showdown' | 'observer'
 
@@ -97,6 +97,7 @@ export default function App() {
       members: cardMembers,
       timer_enabled: timerEnabled,
       open_deadline: null,
+      lobby_roles: { [hostName]: 'judge' },
       created_at: new Date().toISOString(),
     }
     const { error } = await supabase.from('games').upsert(row)
@@ -115,18 +116,20 @@ export default function App() {
 
   // ─── プレイヤーがロビーに参加する ───
   async function handleJoinLobby(g: GameRow, playerName: string) {
-    // 最新の player_names を取得してから追加（競合防止）
+    // 最新の player_names と lobby_roles を取得してから追加（競合防止）
     const { data } = await supabase
       .from('games')
-      .select('player_names')
+      .select('player_names, lobby_roles')
       .eq('id', g.id)
       .single()
     const currentNames = (data?.player_names ?? g.player_names) as string[]
+    const currentRoles = (data?.lobby_roles ?? g.lobby_roles ?? {}) as Record<string, string>
     const playerIndex = currentNames.length   // 新しいプレイヤーは末尾
     const newNames = [...currentNames, playerName]
+    const newRoles = { ...currentRoles, [playerName]: 'player' }
     const { error } = await supabase
       .from('games')
-      .update({ player_names: newNames })
+      .update({ player_names: newNames, lobby_roles: newRoles })
       .eq('id', g.id)
     if (error) { alert(`参加に失敗しました: ${error.message}`); return }
     setGame({ ...g, player_names: newNames })
@@ -142,14 +145,13 @@ export default function App() {
   }
 
   // ─── ロビーからゲーム開始（Realtime 経由で全員に通知される） ───
-  function handleLobbyGameStarted(g: GameRow, isJudge: boolean) {
+  function handleLobbyGameStarted(g: GameRow, myRole: MyRole) {
     setGame(g)
-    // DB に保存されている members があれば上書きする
-    if (Array.isArray(g.members) && g.members.length > 0) {
-      setMembers(g.members)
-    }
-    setClient(prev => ({ ...prev, role: isJudge ? 'judge' : 'player' }))
-    navigate(isJudge ? 'host' : 'game')
+    if (Array.isArray(g.members) && g.members.length > 0) setMembers(g.members)
+    setClient(prev => ({ ...prev, role: myRole }))
+    if (myRole === 'observer') navigate('observer')
+    else if (myRole === 'judge') navigate('host')
+    else navigate('game')
   }
 
   // ─── 進行中のゲームに再参加（ScreenJoin 経由） ───
@@ -206,7 +208,7 @@ export default function App() {
         <ScreenLobby
           roomCode={client.roomCode}
           myPlayerIndex={client.myPlayerIndex}
-          isHost={client.role === 'judge'}
+          isHost={client.myPlayerIndex === 0}
           members={members}
           onGameStarted={handleLobbyGameStarted}
         />

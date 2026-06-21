@@ -48,6 +48,7 @@ export interface GameRow {
   scores?: Record<string, number>  // プレイヤー名 → 累計ポイント
   timer_enabled?: boolean          // オープンフェーズのタイマー制限（3分）
   open_deadline?: string | null    // オープンフェーズの締め切り時刻（ISO文字列）
+  lobby_roles?: Record<string, 'judge' | 'player' | 'observer'>  // ロビーでのロール選択
   created_at: string
 }
 
