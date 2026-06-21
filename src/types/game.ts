@@ -1,5 +1,5 @@
 // ゲームフェーズ
-export type GamePhase = 'lobby' | 'change' | 'open' | 'judge' | 'winner'
+export type GamePhase = 'lobby' | 'change' | 'change2' | 'open' | 'judge' | 'winner'
 
 // カード（デッキメンバー）
 export interface CardMember {
@@ -32,6 +32,7 @@ export interface ShowdownEntry {
   yaku: string          // 役名（大喜利テキスト）
   cards: CardMember[]   // 出したカード（後方互換用・全枚数）
   groups?: CardGroup[]  // 役の内訳（ツーペア・フルハウス・ストレート等）
+  judgeScore?: number   // ジャッジが付けた点数（1〜10）
 }
 
 // Supabase games テーブルの行
@@ -44,6 +45,7 @@ export interface GameRow {
   judge_index: number          // player_names の何番目がジャッジか
   player_names: string[]       // 全参加者名（0番=最初のジャッジ/ホスト）
   winner: string | null
+  scores?: Record<string, number>  // プレイヤー名 → 累計ポイント（DBカラム追加後に有効）
   created_at: string
 }
 
@@ -74,4 +76,5 @@ export interface NextRoundUpdate {
   showdown: ShowdownEntry[]
   judge_index: number
   winner: null
+  scores?: Record<string, number>
 }

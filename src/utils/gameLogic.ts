@@ -132,6 +132,7 @@ export function buildNextRound(
     showdown: [],
     judge_index: nextJudgeIndex,
     winner: null,
+    scores: currentGame.scores ?? {},
   }
 }
 

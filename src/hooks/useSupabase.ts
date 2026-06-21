@@ -80,6 +80,15 @@ export function useGame({
 
     if (phase === 'change' && isAllChanged(hands)) {
       processingRef.current = true
+      // 1回目完了 → changed フラグをリセットして2回目チェンジへ
+      const resetHands = hands.map(h => ({ ...h, changed: false }))
+      await supabase.from('games').update({ phase: 'change2', hands: resetHands }).eq('id', g.id)
+      processingRef.current = false
+      return
+    }
+
+    if (phase === 'change2' && isAllChanged(hands)) {
+      processingRef.current = true
       await supabase.from('games').update({ phase: 'open' }).eq('id', g.id)
       processingRef.current = false
       return

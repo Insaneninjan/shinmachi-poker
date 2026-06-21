@@ -53,7 +53,7 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
   // フェーズが切り替わったらリセット
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (phase === 'change') {
+    if (phase === 'change' || phase === 'change2') {
       setDiscardSelected([])
       setChangeSubmitted(myHand?.changed ?? false)
     }
@@ -77,10 +77,11 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
   }, [yakuType])
 
   const PHASE_INFO: Record<string, { name: string; desc: string }> = {
-    change: { name: 'チェンジフェーズ', desc: '捨てるカードを選んでチェンジしよう' },
-    open:   { name: 'オープンフェーズ', desc: '役を入力してカードを出そう' },
-    judge:  { name: '判定フェーズ', desc: 'ジャッジが勝者を決定中...' },
-    winner: { name: '結果発表', desc: '' },
+    change:  { name: 'チェンジフェーズ（1回目）', desc: '捨てるカードを選んでチェンジしよう' },
+    change2: { name: 'チェンジフェーズ（2回目）', desc: 'もう一度チェンジできます（0枚でもOK）' },
+    open:    { name: 'オープンフェーズ', desc: '役を入力してカードを出そう' },
+    judge:   { name: '判定フェーズ', desc: 'ジャッジが勝者を決定中...' },
+    winner:  { name: '結果発表', desc: '' },
   }
   const pi = PHASE_INFO[phase] ?? PHASE_INFO.change
 
@@ -178,12 +179,16 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
 
       <PhaseBanner phase={phase} name={pi.name} desc={pi.desc} />
 
-      {/* チェンジフェーズ */}
-      {phase === 'change' && (
+      {/* チェンジフェーズ（1回目・2回目共通） */}
+      {(phase === 'change' || phase === 'change2') && (
         changeSubmitted ? (
           <>
             <div className="animate-slide-down">
-              <SuccessPanel>✅ チェンジ完了！次のフェーズが始まるまで待ってね</SuccessPanel>
+              <SuccessPanel>
+                {phase === 'change2'
+                  ? '✅ 2回目のチェンジ完了！次のフェーズが始まるまで待ってね'
+                  : '✅ チェンジ完了！2回目のチェンジが始まるまで待ってね'}
+              </SuccessPanel>
             </div>
             <SectionLabel>あなたの手札</SectionLabel>
             <div className="grid grid-cols-5 gap-2 mb-4">
@@ -193,6 +198,18 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
         ) : (
           <>
             <SectionLabel>捨てるカードを選ぼう（0〜5枚）</SectionLabel>
+            <div className="flex justify-center mb-3">
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-bold"
+                style={{
+                  background: 'rgba(201,168,76,0.12)',
+                  border: '1.5px solid rgba(201,168,76,0.3)',
+                  color: '#c9a84c',
+                }}
+              >
+                🔄 シャッフル残り {phase === 'change' ? '2回' : '1回'}
+              </span>
+            </div>
             <div className="grid grid-cols-5 gap-2 mb-2">
               {myHand.cards.map((c, i) => (
                 <Card

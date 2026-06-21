@@ -88,6 +88,7 @@ export default function App() {
       showdown: [],
       judge_index: 0,
       winner: null,
+      scores: {},
       members: cardMembers,
       created_at: new Date().toISOString(),
     }
