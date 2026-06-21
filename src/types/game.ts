@@ -45,12 +45,14 @@ export interface GameRow {
   judge_index: number          // player_names の何番目がジャッジか
   player_names: string[]       // 全参加者名（0番=最初のジャッジ/ホスト）
   winner: string | null
-  scores?: Record<string, number>  // プレイヤー名 → 累計ポイント（DBカラム追加後に有効）
+  scores?: Record<string, number>  // プレイヤー名 → 累計ポイント
+  timer_enabled?: boolean          // オープンフェーズのタイマー制限（3分）
+  open_deadline?: string | null    // オープンフェーズの締め切り時刻（ISO文字列）
   created_at: string
 }
 
 // 自分のロール
-export type MyRole = 'judge' | 'player'
+export type MyRole = 'judge' | 'player' | 'observer'
 
 // クライアントの状態
 export interface ClientState {

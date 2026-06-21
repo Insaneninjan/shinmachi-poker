@@ -31,7 +31,7 @@ const DUMMY_NAMES = [
 ]
 
 interface ScreenWelcomeProps {
-  onCreateLobby: (hostName: string, members: CardMember[]) => Promise<void>
+  onCreateLobby: (hostName: string, members: CardMember[], timerEnabled: boolean) => Promise<void>
   onJoin: () => void
 }
 
@@ -52,6 +52,7 @@ export function ScreenWelcome({ onCreateLobby, onJoin }: ScreenWelcomeProps) {
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [timerEnabled, setTimerEnabled] = useState(false)
   const [loading, setLoading] = useState(false)
   // 名前編集：編集中のindex（null = 非編集）と入力値
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -286,7 +287,7 @@ export function ScreenWelcome({ onCreateLobby, onJoin }: ScreenWelcomeProps) {
     }
     setLoading(true)
     try {
-      await onCreateLobby(host, members)
+      await onCreateLobby(host, members, timerEnabled)
     } finally {
       setLoading(false)
     }
@@ -360,6 +361,33 @@ export function ScreenWelcome({ onCreateLobby, onJoin }: ScreenWelcomeProps) {
       <div className="space-y-3 mb-4">
         <Button variant="outline" onClick={() => setSub('cards')}>🃏 カード登録（{members.length}枚）</Button>
       </div>
+
+      {/* タイマー設定 */}
+      <div
+        className="flex items-center justify-between px-4 py-3 rounded-[12px] mb-4 cursor-pointer transition-all"
+        style={{
+          background: timerEnabled ? 'rgba(201,168,76,0.08)' : 'rgba(0,0,0,0.25)',
+          border: timerEnabled ? '1.5px solid rgba(201,168,76,0.35)' : '1px solid rgba(255,255,255,0.1)',
+        }}
+        onClick={() => setTimerEnabled(v => !v)}
+      >
+        <div>
+          <div className="text-[14px] font-bold text-[#fdf6e3]">⏱ オープン制限タイマー</div>
+          <div className="text-[11px] text-white/40 mt-0.5">
+            {timerEnabled ? '3分以内に役とタイトルを入力する必要があります' : '時間制限なし'}
+          </div>
+        </div>
+        <div
+          className="relative w-11 h-6 rounded-full flex-shrink-0 transition-all"
+          style={{ background: timerEnabled ? '#c9a84c' : 'rgba(255,255,255,0.15)' }}
+        >
+          <div
+            className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all"
+            style={{ left: timerEnabled ? '22px' : '2px' }}
+          />
+        </div>
+      </div>
+
       <div className="bg-[rgba(201,168,76,0.06)] border border-[rgba(201,168,76,0.15)] rounded-xl px-4 py-3 text-[12px] text-white/50 mb-4">
         📌 プレイヤーはルームコードを使って後から自分で参加できます
       </div>

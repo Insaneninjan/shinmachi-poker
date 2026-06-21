@@ -8,10 +8,11 @@ interface ScreenJoinProps {
   onJoinLobby: (game: GameRow, playerName: string) => Promise<void>
   onJoinAsJudge: (game: GameRow, playerIndex: number) => void
   onJoinAsPlayer: (game: GameRow, playerIndex: number) => void
+  onJoinAsObserver: (game: GameRow) => void
   onBack: () => void
 }
 
-export function ScreenJoin({ onJoinLobby, onJoinAsJudge, onJoinAsPlayer, onBack }: ScreenJoinProps) {
+export function ScreenJoin({ onJoinLobby, onJoinAsJudge, onJoinAsPlayer, onJoinAsObserver, onBack }: ScreenJoinProps) {
   const [chars, setChars] = useState(['', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [joining, setJoining] = useState(false)
@@ -200,6 +201,15 @@ export function ScreenJoin({ onJoinLobby, onJoinAsJudge, onJoinAsPlayer, onBack 
           </div>
         ))}
         <Button variant="ghost" onClick={() => setGame(null)} className="mt-2">← コード入力に戻る</Button>
+        <div className="mt-4 border-t border-[rgba(201,168,76,0.1)] pt-4">
+          <div className="text-[11px] text-white/30 text-center mb-2 tracking-[0.12em]">— または —</div>
+          <button
+            onClick={() => onJoinAsObserver(game)}
+            className="w-full py-3 rounded-[10px] text-[14px] font-bold border border-[rgba(255,255,255,0.12)] bg-black/30 text-white/40 hover:text-white/70 hover:border-white/25 transition-all tracking-wide"
+          >
+            👁 観戦者として参加する
+          </button>
+        </div>
       </Layout>
     )
   }

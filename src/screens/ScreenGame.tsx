@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useGame, supabase } from '../hooks/useSupabase'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
@@ -35,6 +35,7 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
   const [submitting, setSubmitting] = useState(false)
   const [changeSubmitted, setChangeSubmitted] = useState(myHand?.changed ?? false)
   const [openSubmitted, setOpenSubmitted] = useState(false)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)
 
   // ─── 役の内訳グループ割り当て ───
   // cardGroups: 手札index → グループラベル（ツーペア・フルハウス用）
@@ -76,6 +77,27 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
     setCardOrder([])
   }, [yakuType])
 
+  // オープンフェーズのタイマーカウントダウン＆自動提出
+  const submitOpenRef = useRef(submitOpen)
+  useEffect(() => { submitOpenRef.current = submitOpen })
+
+  useEffect(() => {
+    const deadline = currentGame.open_deadline
+    if (!deadline || !currentGame.timer_enabled || phase !== 'open' || openSubmitted) {
+      setTimeLeft(null)
+      return
+    }
+    const deadlineMs = new Date(deadline).getTime()
+    const tick = () => {
+      const remaining = Math.max(0, deadlineMs - Date.now())
+      setTimeLeft(remaining)
+      if (remaining === 0) submitOpenRef.current(true)
+    }
+    tick()
+    const interval = setInterval(tick, 500)
+    return () => clearInterval(interval)
+  }, [currentGame.open_deadline, currentGame.timer_enabled, phase, openSubmitted])
+
   const PHASE_INFO: Record<string, { name: string; desc: string }> = {
     change:  { name: 'チェンジフェーズ（1回目）', desc: '捨てるカードを選んでチェンジしよう' },
     change2: { name: 'チェンジフェーズ（2回目）', desc: 'もう一度チェンジできます（0枚でもOK）' },
@@ -101,10 +123,12 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
   // 役タイプ + 大喜利名を合体させた最終的な役文字列
   const yakuCombined = [yakuType, yakuText.trim()].filter(Boolean).join(' / ')
 
-  async function submitOpen() {
-    if (!myHand || submitting) return
-    if (!yakuCombined) { alert('役を選択 or 入力してね'); return }
-    if (openSelected.length === 0) { alert('出すカードを1枚以上選んでね'); return }
+  async function submitOpen(force = false) {
+    if (!myHand || submitting || openSubmitted) return
+    const finalYaku = force ? (yakuCombined || '(時間切れ)') : yakuCombined
+    const finalCards = force ? (openSelected.length > 0 ? openSelected : [0, 1, 2, 3, 4]) : openSelected
+    if (!force && !finalYaku) { alert('役を選択 or 入力してね'); return }
+    if (!force && finalCards.length === 0) { alert('出すカードを1枚以上選んでね'); return }
     setSubmitting(true)
 
     // 役の内訳グループを構築
@@ -126,16 +150,16 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
     const submittedCards = (STRAIGHT_TYPES.includes(yakuType) && cardOrder.length > 0)
       ? [
           ...cardOrder.map(i => myHand.cards[i]),
-          ...openSelected.filter(i => !cardOrder.includes(i)).map(i => myHand.cards[i]),
+          ...finalCards.filter(i => !cardOrder.includes(i)).map(i => myHand.cards[i]),
         ]
-      : openSelected.map(i => myHand.cards[i])
+      : finalCards.map(i => myHand.cards[i])
 
     const { data } = await supabase.from('games').select('showdown').eq('id', roomCode).single()
     const currentSD = (data?.showdown ?? showdown).filter((s: any) => s.playerIndex !== myPlayerIndex)
     currentSD.push({
       playerIndex: myPlayerIndex,
       player: myHand.player,
-      yaku: yakuCombined,
+      yaku: finalYaku,
       cards: submittedCards,
       ...(groups ? { groups } : {}),
     })
@@ -238,6 +262,21 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
       )}
 
       {/* オープンフェーズ */}
+      {phase === 'open' && timeLeft !== null && (
+        <div className="flex justify-center mb-3">
+          <div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-bold font-playfair"
+            style={{
+              background: timeLeft < 30000 ? 'rgba(192,57,43,0.15)' : 'rgba(201,168,76,0.1)',
+              border: `1.5px solid ${timeLeft < 30000 ? 'rgba(192,57,43,0.5)' : 'rgba(201,168,76,0.3)'}`,
+              color: timeLeft < 30000 ? '#ff8a7a' : '#c9a84c',
+              animation: timeLeft < 10000 ? 'pulse 1s ease-in-out infinite' : undefined,
+            }}
+          >
+            ⏱ {Math.floor(timeLeft / 60000)}:{String(Math.floor((timeLeft % 60000) / 1000)).padStart(2, '0')}
+          </div>
+        </div>
+      )}
       {phase === 'open' && (
         openSubmitted ? (
           <>
@@ -469,7 +508,7 @@ export function ScreenGame({ roomCode, myPlayerIndex, members, initialGame }: Sc
               </div>
             )}
 
-            <Button variant="gold" onClick={submitOpen} disabled={submitting}>
+            <Button variant="gold" onClick={() => submitOpen()} disabled={submitting}>
               {submitting ? (
                 <>
                   <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin flex-shrink-0" />

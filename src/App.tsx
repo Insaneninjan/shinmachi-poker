@@ -8,9 +8,10 @@ import { ScreenHost } from './screens/ScreenHost'
 import { ScreenGame } from './screens/ScreenGame'
 import { ScreenShowdown } from './screens/ScreenShowdown'
 import { ScreenGate } from './screens/ScreenGate'
+import { ScreenObserverWait } from './screens/ScreenObserverWait'
 import type { GameRow, CardMember, ClientState } from './types/game'
 
-type AppScreen = 'welcome' | 'join' | 'lobby' | 'host' | 'game' | 'showdown'
+type AppScreen = 'welcome' | 'join' | 'lobby' | 'host' | 'game' | 'showdown' | 'observer'
 
 export default function App() {
   // セッション内で合言葉を突破済みかチェック
@@ -61,15 +62,19 @@ export default function App() {
                 navigate('showdown')
               })
           }
-          if (safeDiff.phase === 'change' && screen === 'showdown') {
+          if (safeDiff.phase === 'change' && (screen === 'showdown' || screen === 'observer')) {
             setGame(prev => {
               const merged = { ...(prev ?? {} as GameRow), ...safeDiff } as GameRow
               if (!Array.isArray(merged.showdown)) merged.showdown = []
               return merged
             })
-            const iAmNowJudge = amIJudge(client.myPlayerIndex, safeDiff.judge_index ?? 0)
-            setClient(prev => ({ ...prev, role: iAmNowJudge ? 'judge' : 'player' }))
-            navigate(iAmNowJudge ? 'host' : 'game')
+            if (client.role === 'observer') {
+              navigate('observer')
+            } else {
+              const iAmNowJudge = amIJudge(client.myPlayerIndex, safeDiff.judge_index ?? 0)
+              setClient(prev => ({ ...prev, role: iAmNowJudge ? 'judge' : 'player' }))
+              navigate(iAmNowJudge ? 'host' : 'game')
+            }
           }
         }
       ).subscribe()
@@ -77,7 +82,7 @@ export default function App() {
   }, [client.roomCode, screen, client.myPlayerIndex])
 
   // ─── ホストが部屋を作る ───
-  async function handleCreateLobby(hostName: string, cardMembers: CardMember[]) {
+  async function handleCreateLobby(hostName: string, cardMembers: CardMember[], timerEnabled: boolean) {
     setMembers(cardMembers)
     const code = generateRoomCode()
     const row: GameRow = {
@@ -90,6 +95,8 @@ export default function App() {
       winner: null,
       scores: {},
       members: cardMembers,
+      timer_enabled: timerEnabled,
+      open_deadline: null,
       created_at: new Date().toISOString(),
     }
     const { error } = await supabase.from('games').upsert(row)
@@ -159,6 +166,16 @@ export default function App() {
     navigate('game')
   }
 
+  function handleJoinAsObserver(g: GameRow) {
+    setGame(g)
+    setClient({ roomCode: g.id, role: 'observer', myPlayerIndex: -1, myPlayerName: null, discardSelected: [], openSelected: [] })
+    if (g.phase === 'winner') {
+      navigate('showdown')
+    } else {
+      navigate('observer')
+    }
+  }
+
   function handleNextRound() {
     // buildNextRound は ScreenShowdown 内の useNextRound が呼ぶ
     // Realtime 経由で全員に change フェーズが伝わる
@@ -174,13 +191,14 @@ export default function App() {
       className={transitioning ? 'opacity-0 pointer-events-none' : 'animate-page-enter'}
     >
       {screen === 'welcome' && (
-        <ScreenWelcome onCreateLobby={handleCreateLobby} onJoin={() => navigate('join')} />
+        <ScreenWelcome onCreateLobby={(h, m, t) => handleCreateLobby(h, m, t)} onJoin={() => navigate('join')} />
       )}
       {screen === 'join' && (
         <ScreenJoin
           onJoinLobby={handleJoinLobby}
           onJoinAsJudge={handleJoinAsJudge}
           onJoinAsPlayer={handleJoinAsPlayer}
+          onJoinAsObserver={handleJoinAsObserver}
           onBack={() => navigate('welcome')}
         />
       )}
@@ -215,6 +233,12 @@ export default function App() {
           isJudge={client.role === 'judge'}
           members={members}
           onNextRound={handleNextRound}
+        />
+      )}
+      {screen === 'observer' && client.roomCode && (
+        <ScreenObserverWait
+          roomCode={client.roomCode}
+          game={game}
         />
       )}
     </div>

@@ -89,7 +89,11 @@ export function useGame({
 
     if (phase === 'change2' && isAllChanged(hands)) {
       processingRef.current = true
-      await supabase.from('games').update({ phase: 'open' }).eq('id', g.id)
+      const openUpdate: Record<string, unknown> = { phase: 'open' }
+      if (g.timer_enabled) {
+        openUpdate.open_deadline = new Date(Date.now() + 3 * 60 * 1000).toISOString()
+      }
+      await supabase.from('games').update(openUpdate).eq('id', g.id)
       processingRef.current = false
       return
     }

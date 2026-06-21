@@ -207,7 +207,7 @@ export function ScreenHost({ roomCode, myPlayerIndex, members, onWinnerDeclared 
                   boxShadow: ready ? '0 0 6px #4ade80' : 'none',
                 }}
               />
-              {h.player}
+              <span className="text-white/35">Player #{h.index + 1}</span>
               {ready && <BadgeGreen>{(phase === 'change' || phase === 'change2') ? 'チェンジ完了' : 'オープン完了'}</BadgeGreen>}
             </div>
             <div className="grid grid-cols-5 gap-1">
