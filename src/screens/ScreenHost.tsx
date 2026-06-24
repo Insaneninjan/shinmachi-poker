@@ -28,6 +28,38 @@ export function ScreenHost({ roomCode, myPlayerIndex, members, onWinnerDeclared 
   const [judgeScores, setJudgeScores] = useState<Record<number, number>>({})
   const [confirming, setConfirming] = useState(false)
 
+  async function updateCardStats() {
+    if (!game) return
+    // 最終手札の出現カウント
+    const appeared: Record<string, number> = {}
+    for (const hand of game.hands ?? []) {
+      for (const card of hand.cards) {
+        appeared[card.name] = (appeared[card.name] ?? 0) + 1
+      }
+    }
+    // ショーダウン使用カウント
+    const used: Record<string, number> = {}
+    for (const entry of game.showdown ?? []) {
+      for (const card of entry.cards) {
+        used[card.name] = (used[card.name] ?? 0) + 1
+      }
+    }
+    const allNames = [...new Set([...Object.keys(appeared), ...Object.keys(used)])]
+    if (allNames.length === 0) return
+    const { data: existing } = await supabase
+      .from('card_stats')
+      .select('card_name, appeared_count, used_count')
+      .in('card_name', allNames)
+    const existMap = new Map((existing ?? []).map(e => [e.card_name, e]))
+    const upsert = allNames.map(name => ({
+      card_name: name,
+      appeared_count: (existMap.get(name)?.appeared_count ?? 0) + (appeared[name] ?? 0),
+      used_count:     (existMap.get(name)?.used_count ?? 0)     + (used[name] ?? 0),
+      updated_at: new Date().toISOString(),
+    }))
+    await supabase.from('card_stats').upsert(upsert, { onConflict: 'card_name' })
+  }
+
   async function confirmScores() {
     if (!game || confirming) return
     setConfirming(true)
@@ -41,12 +73,15 @@ export function ScreenHost({ roomCode, myPlayerIndex, members, onWinnerDeclared 
       ).player
       const prevScores = game.scores ?? {}
       const newScores = { ...prevScores, [winner]: (prevScores[winner] ?? 0) + 1 }
-      await supabase.from('games').update({
-        phase: 'winner',
-        winner,
-        showdown: updatedShowdown,
-        scores: newScores,
-      }).eq('id', roomCode)
+      await Promise.all([
+        supabase.from('games').update({
+          phase: 'winner',
+          winner,
+          showdown: updatedShowdown,
+          scores: newScores,
+        }).eq('id', roomCode),
+        updateCardStats(),
+      ])
       onWinnerDeclared({ ...game, phase: 'winner', winner, showdown: updatedShowdown, scores: newScores })
     } finally {
       setConfirming(false)

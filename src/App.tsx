@@ -9,9 +9,10 @@ import { ScreenGame } from './screens/ScreenGame'
 import { ScreenShowdown } from './screens/ScreenShowdown'
 import { ScreenGate } from './screens/ScreenGate'
 import { ScreenObserverWait } from './screens/ScreenObserverWait'
+import { ScreenStats } from './screens/ScreenStats'
 import type { GameRow, CardMember, ClientState, MyRole } from './types/game'
 
-type AppScreen = 'welcome' | 'join' | 'lobby' | 'host' | 'game' | 'showdown' | 'observer'
+type AppScreen = 'welcome' | 'join' | 'lobby' | 'host' | 'game' | 'showdown' | 'observer' | 'stats'
 
 export default function App() {
   // セッション内で合言葉を突破済みかチェック
@@ -193,7 +194,14 @@ export default function App() {
       className={transitioning ? 'opacity-0 pointer-events-none' : 'animate-page-enter'}
     >
       {screen === 'welcome' && (
-        <ScreenWelcome onCreateLobby={(h, m, t) => handleCreateLobby(h, m, t)} onJoin={() => navigate('join')} />
+        <ScreenWelcome
+          onCreateLobby={(h, m, t) => handleCreateLobby(h, m, t)}
+          onJoin={() => navigate('join')}
+          onStats={() => navigate('stats')}
+        />
+      )}
+      {screen === 'stats' && (
+        <ScreenStats onBack={() => navigate('welcome')} />
       )}
       {screen === 'join' && (
         <ScreenJoin

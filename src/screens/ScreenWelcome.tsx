@@ -33,11 +33,12 @@ const DUMMY_NAMES = [
 interface ScreenWelcomeProps {
   onCreateLobby: (hostName: string, members: CardMember[], timerEnabled: boolean) => Promise<void>
   onJoin: () => void
+  onStats: () => void
 }
 
 type SubScreen = 'home' | 'menu' | 'cards'
 
-export function ScreenWelcome({ onCreateLobby, onJoin }: ScreenWelcomeProps) {
+export function ScreenWelcome({ onCreateLobby, onJoin, onStats }: ScreenWelcomeProps) {
   const [sub, setSub] = useState<SubScreen>('home')
   const [members, setMembers] = useState<CardMember[]>(
     DUMMY_NAMES.map((name, i) => ({
@@ -241,6 +242,7 @@ export function ScreenWelcome({ onCreateLobby, onJoin }: ScreenWelcomeProps) {
 
   function removeMember(i: number) {
     const target = members[i]
+    if (!window.confirm(`「${target.name}」を削除しますか？`)) return
     // 編集中のインデックスが削除対象以降ならリセット（別カードを誤って編集するバグ防止）
     if (editingIndex !== null && editingIndex >= i) setEditingIndex(null)
     setMembers(prev => prev.filter((_, idx) => idx !== i))
@@ -337,7 +339,8 @@ export function ScreenWelcome({ onCreateLobby, onJoin }: ScreenWelcomeProps) {
       <GoldDivider />
       <div className="space-y-3">
         <Button variant="gold" onClick={() => setSub('menu')}>🏠 部屋を作る（ホスト）</Button>
-        <Button variant="outline" onClick={onJoin}>📲 部屋に参加する</Button>
+        <Button variant="gold" onClick={onJoin}>📲 部屋に参加する</Button>
+        <Button variant="gold" onClick={onStats}>📊 カード統計</Button>
       </div>
     </Layout>
   )
